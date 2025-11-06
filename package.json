@@ -18,5 +18,17 @@
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bobthebuilder/builder-api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bobthebuilder/builder-api/issues"
+  },
+  "homepage": "https://github.com/bobthebuilder/builder-api#readme"
 }
