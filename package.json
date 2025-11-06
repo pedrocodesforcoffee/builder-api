@@ -1,0 +1,22 @@
+{
+  "name": "builder-api",
+  "version": "0.1.0",
+  "description": "Construction management API for Bob the Builder platform",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest",
+    "lint": "eslint src/"
+  },
+  "keywords": [
+    "construction",
+    "api",
+    "management"
+  ],
+  "author": "Bob the Builder Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
