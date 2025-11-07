@@ -259,6 +259,149 @@ npm start
 
 ---
 
+## Health Check Monitoring
+
+The Builder API provides comprehensive health check endpoints for monitoring application status and integration with orchestration platforms like Kubernetes.
+
+### Health Endpoints
+
+1. **Combined Health Check**: `GET /health`
+   - Checks all system components (database, memory, CPU)
+   - Returns 200 (healthy/degraded) or 503 (down)
+   - Response time: < 100ms
+
+2. **Liveness Probe**: `GET /health/liveness`
+   - Checks if application is running (not deadlocked)
+   - No external dependencies checked
+   - Always returns 200 unless app is crashed
+   - Response time: < 50ms
+
+3. **Readiness Probe**: `GET /health/readiness`
+   - Checks if application is ready for traffic
+   - Includes database connectivity check
+   - Returns 503 if dependencies unavailable
+   - Response time: < 100ms
+
+### Testing Health Endpoints
+
+```bash
+# Check overall health
+curl http://localhost:3000/health
+
+# Check liveness (for Kubernetes)
+curl http://localhost:3000/health/liveness
+
+# Check readiness (for load balancers)
+curl http://localhost:3000/health/readiness
+
+# Check with timing
+curl -w "\nResponse time: %{time_total}s\n" http://localhost:3000/health
+```
+
+### Health Status Meanings
+
+**Overall Status:**
+- `ok`: All systems healthy
+- `degraded`: Some systems slow but operational
+- `error`: Critical systems down
+
+**Component Status:**
+- `up`: Component healthy
+- `degraded`: Component slow/warning
+- `down`: Component unavailable
+
+### Health Check Thresholds
+
+Configure thresholds via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HEALTH_CHECK_TIMEOUT` | 1000ms | Max time for health checks |
+| `HEALTH_CHECK_CACHE_TTL` | 5000ms | Cache duration for results |
+| `HEALTH_MEMORY_THRESHOLD` | 80% | Memory warning threshold |
+| `HEALTH_CPU_THRESHOLD` | 70% | CPU warning threshold |
+| `HEALTH_DB_RESPONSE_TIME_THRESHOLD` | 500ms | Database slow query threshold |
+
+### Monitoring Integration
+
+**Kubernetes Liveness Probe:**
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health/liveness
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+```
+
+**Kubernetes Readiness Probe:**
+```yaml
+readinessProbe:
+  httpGet:
+    path: /health/readiness
+    port: 3000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+```
+
+### Troubleshooting Unhealthy States
+
+**Database Down (503 on /health/readiness):**
+1. Check database is running: `pg_isready -h localhost -p 5432`
+2. Verify connection: `psql -h localhost -U postgres -d builder_api_dev -c "SELECT 1"`
+3. Check connection pool: Review `details.database.connectionPool` in health response
+4. Check logs: `npm run start:dev 2>&1 | grep -i database`
+
+**High Memory Usage (degraded/error):**
+1. Review current usage: `curl http://localhost:3000/health | jq '.details.memory'`
+2. Check for memory leaks: Monitor over time
+3. Restart application if memory critically high
+4. Adjust `HEALTH_MEMORY_THRESHOLD` if needed
+
+**High CPU Usage (degraded/error):**
+1. Review current usage: `curl http://localhost:3000/health | jq '.details.cpu'`
+2. Check load average vs cores
+3. Identify CPU-intensive operations in logs
+4. Scale horizontally if sustained high load
+
+**Slow Health Checks (> 100ms):**
+1. Check database query performance
+2. Review connection pool exhaustion
+3. Monitor system resources
+4. Check for blocking operations
+
+### Alerting Recommendations
+
+**Critical Alerts (immediate action):**
+- Liveness probe failing (app crashed/deadlocked)
+- Readiness probe failing for > 5 minutes (no traffic)
+- Overall health status = `error`
+- CPU usage > 90%
+- Memory usage > 90%
+
+**Warning Alerts (investigate soon):**
+- Health status = `degraded` for > 15 minutes
+- Database response time > 500ms consistently
+- Memory usage > 80%
+- CPU usage > 70%
+- Connection pool > 80% utilized
+
+**Monitoring Best Practices:**
+1. Check health endpoints every 5-10 seconds
+2. Set up alerts for both liveness and readiness failures
+3. Monitor response times and alert on degradation
+4. Track health status trends over time
+5. Create dashboards showing all health metrics
+6. Test failure scenarios regularly
+
+See [Health Endpoints Documentation](api/health-endpoints.md) for complete API details.
+
+---
+
 ## Common Debugging Steps
 
 ### API Not Starting
