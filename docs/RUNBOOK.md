@@ -5,6 +5,8 @@
 ### Prerequisites
 1. Install Node.js 18+ from https://nodejs.org/
 2. Install PostgreSQL 14+ from https://www.postgresql.org/download/
+   - Ensure PostgreSQL is running and accessible
+   - Default port: 5432
 3. Install Redis from https://redis.io/download/ (optional for local development)
 
 ### Setup Steps
@@ -24,19 +26,32 @@ cp .env.example .env
 
 3. **Database Setup**
 ```bash
-# Create database
-createdb bobbuilder
+# Create development database
+createdb builder_api_dev
+
+# Alternatively, using psql
+psql -U postgres -c "CREATE DATABASE builder_api_dev;"
+
+# Verify connection
+psql -h localhost -p 5432 -U postgres -d builder_api_dev -c "SELECT 1;"
 
 # Run migrations
-npm run migrate
-
-# Seed test data (optional)
-npm run seed
+npm run migration:run
 ```
 
-4. **Start Development Server**
+4. **Build Application**
 ```bash
-npm run dev
+# Build TypeScript
+npm run build
+```
+
+5. **Start Development Server**
+```bash
+# Start with hot-reload
+npm run start:dev
+
+# Or start production mode
+npm run start:prod
 ```
 
 The API should now be running at http://localhost:3000
@@ -45,14 +60,35 @@ The API should now be running at http://localhost:3000
 
 ## Environment Variables
 
-### Required Variables
+### Application Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NODE_ENV` | Environment name | `development`, `staging`, `production` |
-| `PORT` | Server port | `3000` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@localhost:5432/bobbuilder` |
-| `JWT_SECRET` | Secret key for JWT signing | Generate with `openssl rand -base64 32` |
+| Variable | Description | Default | Example |
+|----------|-------------|---------|---------|
+| `NODE_ENV` | Environment name | `development` | `development`, `staging`, `production` |
+| `PORT` | Server port | `3000` | `3000` |
+| `API_PREFIX` | Global API prefix | `api` | `api`, `v1` |
+
+### Database Variables
+
+| Variable | Description | Default | Example |
+|----------|-------------|---------|---------|
+| `DB_HOST` | Database host | `localhost` | `localhost`, `db.example.com` |
+| `DB_PORT` | Database port | `5432` | `5432` |
+| `DB_NAME` | Database name | `builder_api_dev` | `builder_api_dev` |
+| `DB_USER` | Database username | `postgres` | `postgres` |
+| `DB_PASSWORD` | Database password | `postgres` | `your-secure-password` |
+| `DB_SSL` | Enable SSL connection | `false` | `true`, `false` |
+| `DB_SYNCHRONIZE` | Auto-sync schema (**never use in production!**) | `false` | `false` |
+| `DB_LOGGING` | Enable query logging | `true` | `true`, `false` |
+
+### Connection Pool Variables
+
+| Variable | Description | Default | Example |
+|----------|-------------|---------|---------|
+| `DB_POOL_SIZE` | Maximum pool size | `10` | `10`, `20` |
+| `DB_POOL_IDLE_TIMEOUT` | Idle timeout (ms) | `10000` | `10000` |
+| `DB_CONNECTION_TIMEOUT` | Connection timeout (ms) | `2000` | `2000` |
+| `DB_STATEMENT_TIMEOUT` | Query timeout (ms) | `30000` | `30000` |
 
 ### Optional Variables
 
@@ -60,8 +96,6 @@ The API should now be running at http://localhost:3000
 |----------|-------------|---------|
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379` |
 | `LOG_LEVEL` | Logging level | `debug`, `info`, `warn`, `error` |
-| `RATE_LIMIT_WINDOW` | Rate limit window (ms) | `900000` (15 min) |
-| `RATE_LIMIT_MAX` | Max requests per window | `100` |
 
 ---
 
@@ -69,19 +103,32 @@ The API should now be running at http://localhost:3000
 
 ### Migrations
 
+**Important**: Always build the application before running migrations.
+
 ```bash
-# Create a new migration
-npm run migrate:create -- migration_name
+# Generate a new migration from entity changes
+npm run migration:generate -- src/migrations/MigrationName
+
+# Create an empty migration file
+npm run migration:create src/migrations/MigrationName
 
 # Run all pending migrations
-npm run migrate:up
+npm run migration:run
 
 # Rollback last migration
-npm run migrate:down
+npm run migration:revert
 
 # Check migration status
-npm run migrate:status
+npm run migration:show
 ```
+
+**Migration Best Practices:**
+- Always review generated migrations before running them
+- Test migrations in development first
+- Never set `DB_SYNCHRONIZE=true` in production
+- Keep migrations small and focused
+- Use descriptive names for migrations
+- Backup database before running migrations in production
 
 ### Seeding
 
@@ -97,14 +144,91 @@ npm run seed -- --file seeds/users.js
 
 ```bash
 # Create backup
-pg_dump -Fc $DATABASE_URL > backup_$(date +%Y%m%d_%H%M%S).dump
+pg_dump -Fc builder_api_dev -U postgres > backup_$(date +%Y%m%d_%H%M%S).dump
 
 # Restore from backup
-pg_restore -d $DATABASE_URL backup_file.dump
+pg_restore -d builder_api_dev -U postgres backup_file.dump
 
 # Backup to S3 (production)
-pg_dump -Fc $DATABASE_URL | aws s3 cp - s3://backups/db_$(date +%Y%m%d).dump
+pg_dump -Fc builder_api_dev | aws s3 cp - s3://backups/db_$(date +%Y%m%d).dump
 ```
+
+### Connection Troubleshooting
+
+**Issue: Cannot connect to database**
+
+1. **Verify PostgreSQL is running**
+```bash
+# Check PostgreSQL status (macOS/Linux)
+pg_isready -h localhost -p 5432
+
+# Check service status
+brew services list | grep postgresql  # macOS
+systemctl status postgresql           # Linux
+```
+
+2. **Verify database exists**
+```bash
+psql -U postgres -l | grep builder_api
+```
+
+3. **Test connection with psql**
+```bash
+psql -h localhost -p 5432 -U postgres -d builder_api_dev -c "SELECT 1;"
+```
+
+4. **Check environment variables**
+```bash
+# Verify .env file is loaded
+cat .env | grep DB_
+```
+
+5. **Review connection errors**
+```bash
+# Check application logs for connection errors
+npm run start:dev 2>&1 | grep -i "database\|connection"
+```
+
+**Issue: Connection pool exhausted**
+
+- Increase `DB_POOL_SIZE` (default: 10)
+- Check for connection leaks in application code
+- Monitor active connections:
+```sql
+SELECT count(*) FROM pg_stat_activity WHERE datname = 'builder_api_dev';
+```
+
+**Issue: Slow queries**
+
+- Enable query logging: `DB_LOGGING=true`
+- Check `DB_STATEMENT_TIMEOUT` (default: 30000ms)
+- Analyze slow queries:
+```sql
+SELECT query, mean_exec_time FROM pg_stat_statements ORDER BY mean_exec_time DESC LIMIT 10;
+```
+
+### Connection Pool Tuning
+
+**Development:**
+- Pool Size: 5-10 connections
+- Idle Timeout: 10 seconds
+- Connection Timeout: 2 seconds
+
+**Production:**
+- Pool Size: 20-50 connections (based on load)
+- Idle Timeout: 30 seconds
+- Connection Timeout: 5 seconds
+- Statement Timeout: 60 seconds
+
+**Formula for pool sizing:**
+```
+connections = ((core_count * 2) + effective_spindle_count)
+```
+
+For most web applications:
+- Small: 10-20 connections
+- Medium: 20-50 connections
+- Large: 50-100 connections
 
 ---
 
