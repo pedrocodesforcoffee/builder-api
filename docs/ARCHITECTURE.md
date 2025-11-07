@@ -22,9 +22,13 @@ Builder API follows a microservices-based architecture with a focus on scalabili
          ▼
 ┌──────────────────┐
 │   Builder API    │
-│   (Express.js)   │
+│    (NestJS)      │
 │                  │
 │  ┌────────────┐  │
+│  │  Modules   │  │
+│  └─────┬──────┘  │
+│        │         │
+│  ┌─────▼──────┐  │
 │  │Controllers │  │
 │  └─────┬──────┘  │
 │        │         │
@@ -48,12 +52,113 @@ Builder API follows a microservices-based architecture with a focus on scalabili
 ## API Layer
 
 ### Technology Stack
-- **Framework**: Express.js
-- **Authentication**: JWT (JSON Web Tokens)
-- **Validation**: Joi or express-validator
-- **Documentation**: OpenAPI/Swagger
+- **Framework**: NestJS (TypeScript)
+- **Authentication**: JWT (JSON Web Tokens) with Passport
+- **Validation**: class-validator and class-transformer
+- **Documentation**: OpenAPI/Swagger via @nestjs/swagger
+- **Configuration**: @nestjs/config for environment management
+
+### Why NestJS?
+
+NestJS was chosen as the framework for Builder API due to several key advantages:
+
+1. **TypeScript First**: Built with TypeScript from the ground up, providing strong typing, better IDE support, and improved code quality through compile-time error detection.
+
+2. **Modular Architecture**: NestJS enforces a modular architecture that scales well with application growth. Modules encapsulate related functionality, making the codebase easier to navigate and maintain.
+
+3. **Dependency Injection**: Built-in IoC (Inversion of Control) container makes testing easier and promotes loose coupling between components.
+
+4. **Enterprise-Ready**: Provides out-of-the-box support for common enterprise patterns including guards, interceptors, pipes, and filters for cross-cutting concerns.
+
+5. **Extensive Ecosystem**: Rich ecosystem with official integrations for databases (TypeORM, Prisma), testing (Jest), validation, caching, and more.
+
+6. **Express Compatible**: Built on top of Express (with option for Fastify), leveraging a mature and well-tested HTTP server while adding structure and conventions.
+
+7. **Consistent Patterns**: Decorator-based programming model inspired by Angular provides consistency and reduces boilerplate code.
+
+### Module Structure
+
+The application follows a modular structure with clear separation of concerns:
+
+```
+src/
+├── app.module.ts           # Root module that orchestrates all feature modules
+├── app.controller.ts       # Root controller for health checks and app info
+├── app.service.ts          # Root service for application-level operations
+├── main.ts                 # Application entry point with bootstrap logic
+├── common/                 # Shared utilities and cross-cutting concerns
+│   ├── filters/            # Exception filters for error handling
+│   ├── interceptors/       # Interceptors for request/response transformation
+│   ├── pipes/              # Validation and transformation pipes
+│   └── decorators/         # Custom decorators for metadata
+├── config/                 # Configuration management
+│   └── configuration.ts    # Environment variable mappings
+└── modules/                # Feature modules (organized by domain)
+    └── [feature-name]/     # Each feature is self-contained
+        ├── [feature].module.ts
+        ├── [feature].controller.ts
+        ├── [feature].service.ts
+        ├── dto/            # Data Transfer Objects
+        ├── entities/       # Database entities
+        └── interfaces/     # TypeScript interfaces
+```
+
+### TypeScript Configuration
+
+The project uses strict TypeScript configuration to ensure type safety:
+
+- **Strict Mode**: Enabled to catch potential bugs at compile time
+- **Target**: ES2021 for modern JavaScript features
+- **Path Aliases**: Configured for clean imports
+  - `@src/*` → `src/*`
+  - `@modules/*` → `src/modules/*`
+  - `@common/*` → `src/common/*`
+  - `@config/*` → `src/config/*`
+- **Decorators**: Enabled for NestJS decorator-based programming
+- **Source Maps**: Generated for easier debugging
+
+### Development Workflow
+
+#### Local Development
+```bash
+# Install dependencies
+npm install
+
+# Start in development mode with hot-reload
+npm run start:dev
+
+# Run linting
+npm run lint
+
+# Fix linting issues
+npm run lint:fix
+
+# Format code
+npm run format
+
+# Run unit tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run e2e tests
+npm run test:e2e
+```
+
+#### Building for Production
+```bash
+# Build the application
+npm run build
+
+# Start production server
+npm run start:prod
+```
 
 ### Key Components
+
+#### Modules
+Organize related functionality into cohesive units. Each module can import other modules and export providers for use by other modules.
 
 #### Controllers
 Handle HTTP requests and responses, validate input, and delegate to services.
