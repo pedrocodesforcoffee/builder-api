@@ -113,48 +113,187 @@ npm run lint:fix      # Auto-fix issues
 ## Testing Requirements
 
 ### Test Coverage
-- Minimum 80% code coverage for new features
+- Minimum 70% code coverage for new features (branches, functions, lines, statements)
 - All bug fixes must include a regression test
 - Tests must pass before PR can be merged
 
-### Writing Tests
+### Test Types
 
-**Unit Tests** (in `tests/unit/`)
-- Test individual functions and methods
-- Mock external dependencies
-- Fast execution
+We use Jest with TypeScript for all testing. The testing infrastructure includes three levels:
 
-**Integration Tests** (in `tests/integration/`)
-- Test API endpoints end-to-end
-- Use test database
-- Verify data persistence
+**Unit Tests** (in `src/**/*.spec.ts`)
+- Test individual methods and classes in isolation
+- Mock all external dependencies (database, services, etc.)
+- Fast execution (no I/O operations)
+- Use mocks from `test/mocks/`
 
-### Test Example
+**Integration Tests** (in `test/integration/**/*.spec.ts`)
+- Test interactions between components with real dependencies
+- Use test database (in-memory, test containers, or dedicated test DB)
+- Verify data persistence and business logic
+- Run sequentially to avoid conflicts
 
-```javascript
-// tests/unit/services/userService.test.js
-const UserService = require('../../src/services/userService');
+**E2E Tests** (in `test/e2e/**/*.spec.ts`)
+- Test complete user flows through the API
+- Use full application stack with real HTTP requests
+- Require PostgreSQL test database
+- Run sequentially to ensure isolation
+
+### Test Infrastructure
+
+#### Test Helpers
+
+Located in `test/helpers/`:
+- **test-database.helper.ts**: Database setup with multiple strategies
+- **test-app.helper.ts**: NestJS application setup for E2E tests
+- **test-utils.helper.ts**: Utility functions for tests
+
+#### Test Fixtures
+
+Located in `test/fixtures/`:
+- Use `@faker-js/faker` for generating realistic test data
+- Base fixture factory for creating test entities
+- Example: `healthCheckFixture.build()` or `healthCheckFixture.create(repository)`
+
+#### Test Mocks
+
+Located in `test/mocks/`:
+- **logger.mock.ts**: Mock logger service
+- **repository.mock.ts**: Mock TypeORM repositories
+- **config.mock.ts**: Mock ConfigService
+
+### Writing Unit Tests
+
+```typescript
+// src/modules/user/user.service.spec.ts
+import { Test, TestingModule } from '@nestjs/testing';
+import { UserService } from './user.service';
+import { createMockRepository } from '@test/mocks/repository.mock';
+import { createMockLogger } from '@test/mocks/logger.mock';
+import { User } from './user.entity';
 
 describe('UserService', () => {
-  describe('getUserById', () => {
+  let service: UserService;
+  let userRepository;
+  let logger;
+
+  beforeEach(async () => {
+    userRepository = createMockRepository<User>();
+    logger = createMockLogger();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        UserService,
+        { provide: 'UserRepository', useValue: userRepository },
+        { provide: LoggingService, useValue: logger },
+      ],
+    }).compile();
+
+    service = module.get<UserService>(UserService);
+  });
+
+  describe('findById', () => {
     it('should return user when found', async () => {
-      const userId = '123';
-      const mockUser = { id: userId, name: 'John Doe' };
+      const mockUser = { id: '123', name: 'John Doe' };
+      userRepository.findOne.mockResolvedValue(mockUser);
 
-      User.findById = jest.fn().mockResolvedValue(mockUser);
-
-      const result = await UserService.getUserById(userId);
+      const result = await service.findById('123');
 
       expect(result).toEqual(mockUser);
-      expect(User.findById).toHaveBeenCalledWith(userId);
+      expect(userRepository.findOne).toHaveBeenCalledWith({ where: { id: '123' } });
     });
 
-    it('should throw error when user not found', async () => {
-      User.findById = jest.fn().mockResolvedValue(null);
+    it('should throw NotFoundException when user not found', async () => {
+      userRepository.findOne.mockResolvedValue(null);
 
-      await expect(UserService.getUserById('999'))
-        .rejects
-        .toThrow('User not found');
+      await expect(service.findById('999')).rejects.toThrow(NotFoundException);
+    });
+  });
+});
+```
+
+### Writing Integration Tests
+
+```typescript
+// test/integration/user.spec.ts
+import { TestDatabaseHelper, createTestDatabase, DatabaseStrategy } from '@test/helpers/test-database.helper';
+import { User } from '@modules/user/user.entity';
+
+describe('User Integration Tests', () => {
+  let dbHelper: TestDatabaseHelper;
+
+  beforeAll(async () => {
+    dbHelper = createTestDatabase({
+      strategy: DatabaseStrategy.IN_MEMORY, // or TEST_CONTAINER or DEDICATED_DB
+      entities: [User],
+    });
+    await dbHelper.initialize();
+  });
+
+  afterAll(async () => {
+    await dbHelper.destroy();
+  });
+
+  afterEach(async () => {
+    await dbHelper.cleanup(); // Clear data between tests
+  });
+
+  it('should create and retrieve user', async () => {
+    const repository = dbHelper.getRepository(User);
+
+    const user = repository.create({ name: 'John Doe', email: 'john@example.com' });
+    const saved = await repository.save(user);
+
+    expect(saved.id).toBeDefined();
+
+    const found = await repository.findOne({ where: { id: saved.id } });
+    expect(found?.name).toBe('John Doe');
+  });
+});
+```
+
+### Writing E2E Tests
+
+```typescript
+// test/e2e/user.spec.ts
+import { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { AppModule } from '@src/app.module';
+import * as request from 'supertest';
+
+describe('User API (E2E)', () => {
+  let app: INestApplication;
+
+  beforeAll(async () => {
+    const moduleFixture = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  describe('POST /api/users', () => {
+    it('should create a new user', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/users')
+        .send({ name: 'John Doe', email: 'john@example.com' })
+        .expect(201);
+
+      expect(response.body).toHaveProperty('id');
+      expect(response.body.name).toBe('John Doe');
+    });
+
+    it('should return 400 for invalid data', async () => {
+      await request(app.getHttpServer())
+        .post('/api/users')
+        .send({ name: '' })
+        .expect(400);
     });
   });
 });
@@ -163,11 +302,81 @@ describe('UserService', () => {
 ### Running Tests
 
 ```bash
-npm test                    # Run all tests
-npm run test:unit           # Run unit tests only
-npm run test:integration    # Run integration tests only
-npm run test:coverage       # Generate coverage report
-npm run test:watch          # Watch mode for development
+# Run all tests (unit, integration, e2e)
+npm test
+
+# Run specific test types
+npm run test:unit              # Unit tests only
+npm run test:integration       # Integration tests only
+npm run test:e2e              # E2E tests only
+
+# Run all test types sequentially
+npm run test:all
+
+# Watch mode for development
+npm run test:watch
+npm run test:watch:unit
+
+# Coverage reports
+npm run test:cov              # All tests with coverage
+npm run test:cov:unit         # Unit tests with coverage
+npm run test:cov:integration  # Integration tests with coverage
+
+# CI/CD
+npm run test:ci               # Optimized for CI environments
+
+# Debug tests
+npm run test:debug
+
+# Clear Jest cache
+npm run test:clear
+```
+
+### Database Test Strategies
+
+Configure via `TEST_DB_STRATEGY` environment variable:
+
+1. **in-memory** (default for unit/integration tests)
+   - Uses pg-mem for fast, isolated tests
+   - No external dependencies
+   - Limitations: Some PostgreSQL features not supported
+
+2. **test-container** (recommended for integration tests)
+   - Uses Docker to spin up PostgreSQL container
+   - Full PostgreSQL compatibility
+   - Requires Docker to be running
+
+3. **dedicated-db** (for E2E tests)
+   - Uses dedicated PostgreSQL test database
+   - Configure in `.env.test`
+   - Create database: `createdb builder_api_test`
+
+Example:
+```bash
+TEST_DB_STRATEGY=test-container npm run test:integration
+```
+
+### Test Fixtures
+
+Use fixtures to create test data:
+
+```typescript
+import { userFixture } from '@test/fixtures/user.fixture';
+import { fixtures } from '@test/fixtures/base.fixture';
+
+// Build entity (not saved)
+const user = userFixture.build({ name: 'Custom Name' });
+
+// Create in database
+const savedUser = await userFixture.create(repository, { email: 'test@example.com' });
+
+// Create multiple
+const users = await userFixture.createMany(repository, 10);
+
+// Use faker utilities
+const email = fixtures.email();
+const uuid = fixtures.uuid();
+const pastDate = fixtures.pastDate(1); // 1 year ago
 ```
 
 ## API Design Guidelines
