@@ -402,6 +402,357 @@ See [Health Endpoints Documentation](api/health-endpoints.md) for complete API d
 
 ---
 
+## Structured Logging
+
+The Builder API uses Pino for high-performance structured logging with JSON output, request tracking, and correlation IDs for distributed tracing.
+
+### Log Levels
+
+Logs are written at different levels based on severity:
+
+| Level | Usage | Example |
+|-------|-------|---------|
+| `debug` | Detailed debugging information | Method entry/exit, variable values |
+| `info` | General informational messages | Request/response logs, business events |
+| `warn` | Warning messages, degraded performance | Slow queries, high memory usage |
+| `error` | Error events, exceptions | Failed requests, database errors |
+| `fatal` | Critical errors requiring immediate attention | Application crash, unrecoverable errors |
+
+### Log Configuration
+
+Configure logging behavior via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `info` | Minimum log level to output |
+| `LOG_FORMAT` | `json` | Log output format (`json` or `pretty`) |
+| `LOG_PRETTY` | `false` | Enable pretty-printing for development |
+| `LOG_INCLUDE_TIMESTAMP` | `true` | Include timestamp in logs |
+| `LOG_INCLUDE_HOSTNAME` | `true` | Include hostname in logs |
+| `LOG_REDACT_SENSITIVE` | `true` | Redact passwords, tokens, etc. |
+| `LOG_SKIP_HEALTH_CHECK` | `true` | Skip logging health check endpoints |
+| `LOG_SLOW_QUERY_THRESHOLD` | `100` | Threshold (ms) for slow query warnings |
+| `LOG_SLOW_HTTP_THRESHOLD` | `1000` | Threshold (ms) for slow HTTP warnings |
+
+**Environment-Specific Defaults:**
+- Development: `LOG_LEVEL=debug`, `LOG_PRETTY=true`
+- Staging: `LOG_LEVEL=info`, `LOG_PRETTY=false`
+- Production: `LOG_LEVEL=warn`, `LOG_PRETTY=false`
+- Test: `LOG_LEVEL=error`, `LOG_PRETTY=false`
+
+### Log Format
+
+**JSON Format (Production):**
+```json
+{
+  "level": "info",
+  "timestamp": "2024-11-07T07:00:00.000Z",
+  "pid": 12345,
+  "service": "builder-api",
+  "version": "1.0.0",
+  "environment": "production",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000",
+  "correlationId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "method": "GET",
+  "url": "/api/users/123",
+  "statusCode": 200,
+  "duration": 45,
+  "msg": "Request completed"
+}
+```
+
+**Pretty Format (Development):**
+```
+[11:00:00.000] INFO: Request completed
+    requestId: "550e8400-e29b-41d4-a716-446655440000"
+    correlationId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+    method: "GET"
+    url: "/api/users/123"
+    statusCode: 200
+    duration: 45ms
+```
+
+### Request and Correlation IDs
+
+Every HTTP request is assigned two identifiers:
+
+**Request ID (`X-Request-ID`):**
+- Unique identifier for a single HTTP request
+- Generated automatically or accepted from incoming headers
+- Included in all logs during request processing
+- Returned in response headers
+
+**Correlation ID (`X-Correlation-ID`):**
+- Identifier for tracking requests across multiple services
+- Propagated through microservice calls
+- Used for distributed tracing
+- Persists across the entire user transaction
+
+**Usage Example:**
+```bash
+# Send request with correlation ID
+curl -H "X-Correlation-ID: my-trace-123" http://localhost:3000/api/users
+
+# All logs for this request will include correlationId: "my-trace-123"
+# Response headers will include both X-Request-ID and X-Correlation-ID
+```
+
+### Searching and Filtering Logs
+
+**By Request ID:**
+```bash
+# Development (pretty logs)
+npm run start:dev 2>&1 | grep "550e8400-e29b-41d4-a716-446655440000"
+
+# Production (JSON logs)
+cat logs/app.log | jq 'select(.requestId == "550e8400-e29b-41d4-a716-446655440000")'
+```
+
+**By Correlation ID:**
+```bash
+# Track entire user flow across services
+cat logs/app.log | jq 'select(.correlationId == "7c9e6679-7425-40de-944b-e07fc1f90ae7")'
+```
+
+**By Log Level:**
+```bash
+# All errors
+cat logs/app.log | jq 'select(.level == "error")'
+
+# Errors and warnings
+cat logs/app.log | jq 'select(.level == "error" or .level == "warn")'
+```
+
+**By Endpoint:**
+```bash
+# All requests to /api/users
+cat logs/app.log | jq 'select(.url | startswith("/api/users"))'
+```
+
+**By Status Code:**
+```bash
+# All 5xx errors
+cat logs/app.log | jq 'select(.statusCode >= 500)'
+
+# All 4xx client errors
+cat logs/app.log | jq 'select(.statusCode >= 400 and .statusCode < 500)'
+```
+
+**By Duration (Slow Requests):**
+```bash
+# Requests taking longer than 1 second
+cat logs/app.log | jq 'select(.duration > 1000)'
+```
+
+**By Time Range:**
+```bash
+# Logs from last hour
+cat logs/app.log | jq 'select(.timestamp > "'$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S)'")'
+```
+
+### Common Log Queries
+
+**Find all errors in the last 24 hours:**
+```bash
+cat logs/app.log | \
+  jq 'select(.level == "error" and .timestamp > "'$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%S)'")' | \
+  jq -s 'group_by(.msg) | map({message: .[0].msg, count: length})' | \
+  jq 'sort_by(.count) | reverse'
+```
+
+**Find slowest endpoints:**
+```bash
+cat logs/app.log | \
+  jq 'select(.duration != null)' | \
+  jq -s 'sort_by(.duration) | reverse | .[0:10]'
+```
+
+**Count requests by endpoint:**
+```bash
+cat logs/app.log | \
+  jq 'select(.url != null)' | \
+  jq -s 'group_by(.url) | map({endpoint: .[0].url, count: length})' | \
+  jq 'sort_by(.count) | reverse'
+```
+
+**Find requests with errors for specific user:**
+```bash
+cat logs/app.log | \
+  jq 'select(.userId == "123" and .level == "error")'
+```
+
+### Debugging with Logs
+
+**Trace a specific request:**
+```bash
+# 1. Get request ID from application logs or response headers
+REQUEST_ID="550e8400-e29b-41d4-a716-446655440000"
+
+# 2. Find all logs for this request
+cat logs/app.log | jq "select(.requestId == \"$REQUEST_ID\")"
+
+# 3. Sort by timestamp to see request flow
+cat logs/app.log | \
+  jq "select(.requestId == \"$REQUEST_ID\")" | \
+  jq -s 'sort_by(.timestamp)'
+```
+
+**Debug slow query:**
+```bash
+# 1. Find slow query logs
+cat logs/app.log | jq 'select(.msg == "Slow database query detected")'
+
+# 2. Get query details
+cat logs/app.log | \
+  jq 'select(.msg == "Slow database query detected") | {query, duration, requestId}'
+
+# 3. Trace request that triggered slow query
+cat logs/app.log | jq "select(.requestId == \"<requestId-from-step-2>\")"
+```
+
+**Find memory/performance issues:**
+```bash
+# Memory warnings
+cat logs/app.log | jq 'select(.msg | contains("Memory"))'
+
+# CPU warnings
+cat logs/app.log | jq 'select(.msg | contains("CPU"))'
+
+# Performance issues
+cat logs/app.log | jq 'select(.msg | contains("Slow") or .msg | contains("Performance"))'
+```
+
+### Integration with Log Aggregation Systems
+
+**Elasticsearch/ELK Stack:**
+```bash
+# Configure Filebeat to ship logs to Elasticsearch
+# filebeat.yml
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/builder-api/*.log
+    json.keys_under_root: true
+    json.add_error_key: true
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  index: "builder-api-%{+yyyy.MM.dd}"
+```
+
+**Datadog:**
+```bash
+# Use Datadog agent with source configuration
+# datadog.yaml
+logs:
+  - type: file
+    path: /var/log/builder-api/*.log
+    service: builder-api
+    source: nodejs
+    sourcecategory: sourcecode
+```
+
+**Splunk:**
+```bash
+# Configure Splunk forwarder
+# inputs.conf
+[monitor:///var/log/builder-api/*.log]
+disabled = false
+sourcetype = _json
+index = builder-api
+```
+
+**CloudWatch (AWS):**
+```bash
+# Use CloudWatch Logs agent
+# awslogs.conf
+[/var/log/builder-api/app.log]
+datetime_format = %Y-%m-%dT%H:%M:%S
+file = /var/log/builder-api/app.log
+buffer_duration = 5000
+log_stream_name = {instance_id}
+initial_position = start_of_file
+log_group_name = /aws/builder-api
+```
+
+### Best Practices
+
+**DO:**
+- ✅ Use correlation IDs to track requests across services
+- ✅ Log at appropriate levels (avoid excessive debug logs in production)
+- ✅ Include context (user ID, request ID) in all logs
+- ✅ Use structured logging (JSON) in production
+- ✅ Redact sensitive information (passwords, tokens)
+- ✅ Log business events for analytics
+- ✅ Monitor log volume and set up alerts
+
+**DON'T:**
+- ❌ Log sensitive data (passwords, tokens, PII)
+- ❌ Use console.log (use logging service)
+- ❌ Log at debug level in production
+- ❌ Create log files manually
+- ❌ Forget to rotate logs
+- ❌ Ignore log aggregation in production
+
+### Performance Considerations
+
+**Log Sampling:**
+For high-traffic endpoints, consider sampling:
+```typescript
+// Log only 10% of successful requests
+if (statusCode < 400 || Math.random() < 0.1) {
+  logger.info('Request completed', context);
+}
+```
+
+**Async Logging:**
+Pino uses async logging by default for better performance. No additional configuration needed.
+
+**Log Rotation:**
+Configure log rotation to prevent disk space issues:
+```bash
+# Using logrotate
+# /etc/logrotate.d/builder-api
+/var/log/builder-api/*.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    notifempty
+    create 644 node node
+    sharedscripts
+    postrotate
+        systemctl reload builder-api
+    endscript
+}
+```
+
+### Troubleshooting Logging Issues
+
+**No logs appearing:**
+1. Check LOG_LEVEL environment variable
+2. Verify log file permissions
+3. Check if logs are being buffered
+4. Ensure logging module is imported
+
+**Too many logs:**
+1. Increase LOG_LEVEL (e.g., from debug to info)
+2. Enable LOG_SKIP_HEALTH_CHECK
+3. Implement log sampling for high-traffic endpoints
+
+**Missing context (requestId/correlationId):**
+1. Verify middleware is applied to all routes
+2. Check AsyncLocalStorage is working
+3. Ensure middleware order is correct
+
+**Sensitive data in logs:**
+1. Verify LOG_REDACT_SENSITIVE=true
+2. Add additional fields to SENSITIVE_FIELDS constant
+3. Review log output manually
+
+---
+
 ## Common Debugging Steps
 
 ### API Not Starting
