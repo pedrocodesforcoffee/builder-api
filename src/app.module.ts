@@ -9,6 +9,7 @@ import { LoggingModule } from './common/logging/logging.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 // Temporarily disabled due to TypeScript compilation errors
 // import { MembershipsModule } from './modules/memberships/memberships.module';
 // import { CascadeModule } from './modules/cascade/cascade.module';
@@ -25,6 +26,7 @@ import { ProjectsModule } from './modules/projects/projects.module';
     AuthModule,
     OrganizationsModule,
     ProjectsModule,
+    MetricsModule,
     // Temporarily disabled - has TypeScript errors in permissions module
     // MembershipsModule,
     // CascadeModule,
