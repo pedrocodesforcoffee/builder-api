@@ -57,6 +57,66 @@ export class Organization {
   slug!: string;
 
   /**
+   * Organization type (e.g., "General Contractor", "Subcontractor", "Owner")
+   */
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
+  type?: string;
+
+  /**
+   * Organization primary email address
+   */
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  email?: string;
+
+  /**
+   * Organization phone number
+   */
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
+  phone?: string;
+
+  /**
+   * Organization physical address
+   */
+  @Column({
+    type: 'text',
+    nullable: true,
+  })
+  address?: string;
+
+  /**
+   * Organization website URL
+   */
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  website?: string;
+
+  /**
+   * Tax ID or EIN (Employer Identification Number)
+   */
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    name: 'tax_id',
+  })
+  taxId?: string;
+
+  /**
    * Whether the organization is active
    * Inactive organizations cannot be accessed by non-admins
    */

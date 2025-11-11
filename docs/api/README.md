@@ -42,6 +42,35 @@ System health and monitoring endpoints.
 | `/api/health/liveness` | GET | Liveness probe (Kubernetes) | [Health Docs](./health-endpoints.md) |
 | `/api/health/readiness` | GET | Readiness probe (Kubernetes) | [Health Docs](./health-endpoints.md) |
 
+### Membership Endpoints
+
+Organization and project membership management.
+
+| Endpoint | Method | Description | Documentation |
+|----------|--------|-------------|---------------|
+| `/api/organizations/:orgId/members` | GET, POST | Manage organization members | [Membership Docs](./MEMBERSHIP_ENDPOINTS.md) |
+| `/api/organizations/:orgId/members/:userId` | PATCH, DELETE | Update/remove org member | [Membership Docs](./MEMBERSHIP_ENDPOINTS.md) |
+| `/api/projects/:projectId/members` | GET, POST | Manage project members | [Membership Docs](./MEMBERSHIP_ENDPOINTS.md) |
+| `/api/projects/:projectId/members/:userId` | PATCH, DELETE | Update/remove project member | [Membership Docs](./MEMBERSHIP_ENDPOINTS.md) |
+
+### Cascade Operations Endpoints
+
+Deletion and restoration operations with cascading effects.
+
+| Endpoint | Method | Description | Documentation |
+|----------|--------|-------------|---------------|
+| `/api/users/:userId` | DELETE | Delete user with cascade | [Cascade Docs](../CASCADE_OPERATIONS.md) |
+| `/api/users/:userId/restore` | POST | Restore soft-deleted user | [Cascade Docs](../CASCADE_OPERATIONS.md) |
+| `/api/users/:userId/deletion-impact` | GET | Preview deletion impact | [Cascade Docs](../CASCADE_OPERATIONS.md) |
+| `/api/users/:userId/validate-deletion` | GET | Validate deletion eligibility | [Cascade Docs](../CASCADE_OPERATIONS.md) |
+| `/api/organizations/:orgId` | DELETE | Delete organization with cascade | [Cascade Docs](../CASCADE_OPERATIONS.md) |
+| `/api/organizations/:orgId/restore` | POST | Restore soft-deleted organization | [Cascade Docs](../CASCADE_OPERATIONS.md) |
+| `/api/organizations/:orgId/deletion-impact` | GET | Preview deletion impact | [Cascade Docs](../CASCADE_OPERATIONS.md) |
+| `/api/projects/:projectId` | DELETE | Delete project with cascade | [Cascade Docs](../CASCADE_OPERATIONS.md) |
+| `/api/projects/:projectId/restore` | POST | Restore soft-deleted project | [Cascade Docs](../CASCADE_OPERATIONS.md) |
+| `/api/projects/:projectId/deletion-impact` | GET | Preview deletion impact | [Cascade Docs](../CASCADE_OPERATIONS.md) |
+| `/api/projects/:projectId/validate-deletion` | GET | Validate deletion eligibility | [Cascade Docs](../CASCADE_OPERATIONS.md) |
+
 ### General Endpoints
 
 | Endpoint | Method | Description |
@@ -242,6 +271,32 @@ CORS is enabled for the following origins:
 
 ## API Changelog
 
+### Version 0.3.0 (2025-01-15)
+
+**Added:**
+- Cascade operations system for safe deletion/restoration
+- User deletion with cascading to all memberships
+- Organization deletion with cascading to all projects
+- Project deletion with cascading to all members and resources
+- Soft delete support with recovery option
+- Deletion impact preview endpoints
+- Deletion validation with sole owner protection
+- Permission cache invalidation on cascade operations
+- Comprehensive cascade documentation
+
+**Endpoints:**
+- 11 cascade operation endpoints (delete, restore, validate, impact)
+- Transaction-safe deletion operations
+- RESTful cascade API design
+
+**Safety:**
+- Sole owner protection (prevents orphaned organizations)
+- Impact preview before deletion
+- Validation endpoints to check blockers
+- Soft delete default (allows recovery)
+- Transaction-based atomicity
+- Referential integrity preservation
+
 ### Version 0.2.0 (2025-11-08)
 
 **Added:**
@@ -256,6 +311,11 @@ CORS is enabled for the following origins:
 - Rate limiting on refresh endpoint (10 req/min)
 - Failed login attempt tracking and IP blocking
 - Comprehensive test coverage (22 tests)
+- Membership management endpoints
+- Role inheritance system
+- Scope-based access control
+- Permission expiration support
+- Permission guards
 
 **Security:**
 - JWT access tokens (15-minute expiration)

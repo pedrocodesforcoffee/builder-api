@@ -7,6 +7,11 @@ import { DatabaseModule } from './modules/database/database.module';
 import { HealthModule } from './modules/health/health.module';
 import { LoggingModule } from './common/logging/logging.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { OrganizationsModule } from './modules/organizations/organizations.module';
+import { ProjectsModule } from './modules/projects/projects.module';
+// Temporarily disabled due to TypeScript compilation errors
+// import { MembershipsModule } from './modules/memberships/memberships.module';
+// import { CascadeModule } from './modules/cascade/cascade.module';
 
 @Module({
   imports: [
@@ -18,6 +23,11 @@ import { AuthModule } from './modules/auth/auth.module';
     DatabaseModule,
     HealthModule,
     AuthModule,
+    OrganizationsModule,
+    ProjectsModule,
+    // Temporarily disabled - has TypeScript errors in permissions module
+    // MembershipsModule,
+    // CascadeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

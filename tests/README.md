@@ -53,6 +53,57 @@ describe('POST /api/projects', () => {
 - Reusable test data sets
 - Database seed data for integration tests
 
+## Test User Accounts
+
+The following test user accounts exist in the development database for manual testing and integration tests:
+
+| Email | Password | First Name | Last Name | Purpose | Source |
+|-------|----------|------------|-----------|---------|--------|
+| `john.doe@example.com` | `SecurePass123@` | John | Doe | Registration API documentation examples | [docs/api/auth/registration.md](../docs/api/auth/registration.md) |
+| `test-refresh@example.com` | `TestPassword123@` | Test | User | E2E testing of refresh token functionality | [test/auth-refresh.e2e-spec.ts](../test/auth-refresh.e2e-spec.ts) |
+| `logout-test@example.com` | `SecurePass123@` | Logout | Test | Testing logout across multiple devices/sessions | [docs/api/auth/logout.md](../docs/api/auth/logout.md) |
+| `multilevel@test.com` | *(Unknown)* | Multi | Level | Testing multi-level permission system | Manual testing |
+
+### Using Test Accounts
+
+**Login via API:**
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.doe@example.com",
+    "password": "SecurePass123@"
+  }'
+```
+
+**Login via psql (check user details):**
+```bash
+psql -h localhost -U postgres -d builder_api_dev \
+  -c "SELECT id, email, first_name, last_name, system_role FROM users WHERE email = 'john.doe@example.com';"
+```
+
+### Notes
+
+- These accounts persist across test runs (except for E2E tests that clean up `%e2e-test%` emails)
+- E2E tests create and clean up temporary users with emails matching `%e2e-test%` pattern
+- Test accounts have the default `user` role (system-level)
+- Rate limiting applies: 6 failed login attempts within 15 minutes will lock the account temporarily
+
+### Creating New Test Users
+
+To create a new test user for development:
+
+```bash
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newtest@example.com",
+    "password": "TestPassword123@",
+    "firstName": "Test",
+    "lastName": "User"
+  }'
+```
+
 ## Running Tests
 
 ### All Tests

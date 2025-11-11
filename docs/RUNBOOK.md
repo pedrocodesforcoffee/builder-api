@@ -140,6 +140,24 @@ npm run seed
 npm run seed -- --file seeds/users.js
 ```
 
+### Test User Accounts
+
+For manual testing and development, several test user accounts are available in the development database. These accounts can be used to test authentication, authorization, and various features without creating new users.
+
+**Available Test Users:**
+- `john.doe@example.com` / `SecurePass123@`
+- `test-refresh@example.com` / `TestPassword123@`
+- `logout-test@example.com` / `SecurePass123@`
+
+See [Testing Guide - Test User Accounts](../tests/README.md#test-user-accounts) for complete details, including how to use these accounts and create new test users.
+
+**Quick Test Login:**
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"john.doe@example.com","password":"SecurePass123@"}'
+```
+
 ### Backup and Restore
 
 ```bash

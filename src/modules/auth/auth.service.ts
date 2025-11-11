@@ -346,4 +346,52 @@ export class AuthService {
     });
     return !!user;
   }
+
+  /**
+   * Get user by ID
+   *
+   * Retrieves a user's complete profile information by their ID.
+   * Used for the /auth/me endpoint to return current user details.
+   *
+   * Note: Password is automatically excluded from the result due to
+   * the @Exclude() decorator on the User entity.
+   *
+   * @param userId - User's UUID
+   * @returns User profile data
+   * @throws UnauthorizedException if user not found
+   */
+  async getUserById(userId: string): Promise<UserResponseDto> {
+    this.logger.log(`Fetching user by ID: ${userId}`);
+
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      this.logger.warn(`User not found for ID: ${userId}`);
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (!user.isActive) {
+      this.logger.warn(`Inactive user attempted access: ${userId}`);
+      throw new UnauthorizedException('User account is inactive');
+    }
+
+    // Convert to response DTO (password excluded by entity)
+    const userResponse: UserResponseDto = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phoneNumber: user.phoneNumber,
+      role: user.systemRole,
+      systemRole: user.systemRole,
+      isActive: user.isActive,
+      emailVerified: user.emailVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+
+    return userResponse;
+  }
 }

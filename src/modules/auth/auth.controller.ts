@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
   HttpCode,
@@ -353,5 +354,64 @@ export class AuthController {
     return {
       message: 'Successfully logged out from all devices',
     };
+  }
+
+  /**
+   * Get current authenticated user
+   *
+   * GET /auth/me
+   *
+   * Returns the current user's profile information based on the JWT token.
+   * Useful for initializing client applications and verifying authentication status.
+   *
+   * Security:
+   * - Requires valid JWT access token
+   * - Returns user without sensitive data (password excluded)
+   *
+   * @returns Current user information
+   *
+   * @example
+   * Request:
+   * ```
+   * GET /auth/me
+   * Authorization: Bearer <access-token>
+   * ```
+   *
+   * Success Response (200):
+   * ```json
+   * {
+   *   "id": "uuid",
+   *   "email": "user@example.com",
+   *   "firstName": "John",
+   *   "lastName": "Doe",
+   *   "systemRole": "user",
+   *   "isActive": true,
+   *   "emailVerified": true,
+   *   "createdAt": "2024-01-01T00:00:00.000Z",
+   *   "updatedAt": "2024-01-01T00:00:00.000Z"
+   * }
+   * ```
+   *
+   * Error Response (401):
+   * ```json
+   * {
+   *   "statusCode": 401,
+   *   "message": "Invalid or expired access token",
+   *   "error": "Unauthorized"
+   * }
+   * ```
+   */
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async getCurrentUser(@Req() req: Request): Promise<UserResponseDto> {
+    const user = (req as any).user;
+
+    this.logger.log(`Get current user request - ID: ${user.id}`);
+
+    // Fetch full user details from database
+    const userDetails = await this.authService.getUserById(user.id);
+
+    return userDetails;
   }
 }

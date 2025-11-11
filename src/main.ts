@@ -13,8 +13,28 @@ async function bootstrap() {
   // Use Pino logger
   app.useLogger(app.get(Logger));
 
-  // Enable CORS for development
-  app.enableCors();
+  // Enable CORS for development with credentials support
+  app.enableCors({
+    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3001'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+      'X-API-Version',
+      'X-Environment',
+      'X-Correlation-ID',
+      'X-Client-Version',
+      'X-Platform',
+      'X-Device-ID',
+      'X-Session-ID',
+      'X-Request-ID',
+    ],
+    exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Page-Size'],
+  });
 
   // Set global API prefix
   const apiPrefix = process.env.API_PREFIX || 'api';

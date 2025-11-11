@@ -13,6 +13,9 @@ export class UserResponseDto {
   lastName!: string;
   phoneNumber?: string;
   role!: string;
+  systemRole!: string;
+  isActive!: boolean;
+  emailVerified!: boolean;
   createdAt!: Date;
   updatedAt!: Date;
 

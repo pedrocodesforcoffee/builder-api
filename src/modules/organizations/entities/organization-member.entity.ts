@@ -21,6 +21,7 @@ import { OrganizationRole } from '../../users/enums/organization-role.enum';
  * Features:
  * - Composite primary key (user_id + organization_id)
  * - Role-based access control at organization level
+ * - Invitation workflow tracking (invited, accepted, joined)
  * - Tracks who added the member and when
  * - Audit trail with created/updated timestamps
  *
@@ -31,6 +32,8 @@ import { OrganizationRole } from '../../users/enums/organization-role.enum';
 @Index('IDX_org_members_organization', ['organizationId'])
 @Index('IDX_org_members_user', ['userId'])
 @Index('IDX_org_members_role', ['role'])
+@Index('IDX_org_members_invited_at', ['invitedAt'])
+@Index('IDX_org_members_joined_at', ['joinedAt'])
 export class OrganizationMember {
   /**
    * User ID (composite primary key)
@@ -65,6 +68,39 @@ export class OrganizationMember {
     name: 'added_by_user_id',
   })
   addedByUserId?: string;
+
+  /**
+   * Timestamp when the invitation was sent
+   * Null for direct assignments (no invitation workflow)
+   */
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+    name: 'invited_at',
+  })
+  invitedAt?: Date;
+
+  /**
+   * Timestamp when the user accepted the invitation
+   * Null if invitation not yet accepted or no invitation sent
+   */
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+    name: 'accepted_at',
+  })
+  acceptedAt?: Date;
+
+  /**
+   * Timestamp when the user actually joined/activated in the organization
+   * May differ from acceptedAt if there's a delay
+   */
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+    name: 'joined_at',
+  })
+  joinedAt?: Date;
 
   /**
    * Timestamp when the membership was created
@@ -152,5 +188,19 @@ export class OrganizationMember {
     };
 
     return roleHierarchy[this.role] >= roleHierarchy[minimumRole];
+  }
+
+  /**
+   * Helper method: Check if invitation is pending
+   */
+  isInvitationPending(): boolean {
+    return this.invitedAt !== null && this.invitedAt !== undefined && !this.acceptedAt;
+  }
+
+  /**
+   * Helper method: Check if member has joined the organization
+   */
+  hasJoined(): boolean {
+    return this.joinedAt !== null && this.joinedAt !== undefined;
   }
 }

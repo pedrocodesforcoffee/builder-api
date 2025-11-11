@@ -32,7 +32,10 @@
     "migration:create": "typeorm-ts-node-commonjs migration:create",
     "migration:run": "npm run build && typeorm-ts-node-commonjs migration:run -d ./dist/ormconfig.js",
     "migration:revert": "npm run build && typeorm-ts-node-commonjs migration:revert -d ./dist/ormconfig.js",
-    "migration:show": "npm run build && typeorm-ts-node-commonjs migration:show -d ./dist/ormconfig.js"
+    "migration:show": "npm run build && typeorm-ts-node-commonjs migration:show -d ./dist/ormconfig.js",
+    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/seed.ts",
+    "seed:reset": "npm run migration:revert && npm run migration:run && npm run seed",
+    "db:reset": "npm run migration:revert && npm run migration:run && npm run seed"
   },
   "keywords": [
     "construction",
@@ -62,6 +65,7 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.8",
     "@nestjs/jwt": "^11.0.1",
+    "@nestjs/mapped-types": "^2.1.0",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.8",
     "@nestjs/terminus": "^11.0.0",

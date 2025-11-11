@@ -43,6 +43,11 @@ cp .env.example .env
 npm run migration:run
 ```
 
+5. Seed the database with test data (optional but recommended):
+```bash
+npm run seed
+```
+
 ## Development
 
 Start the development server:
@@ -86,11 +91,63 @@ npm run build
 npm run start:prod
 ```
 
+## Quick Start - Test Data & Users
+
+The database seed script creates comprehensive test data for development and testing:
+- **10 users** representing all construction roles
+- **3 organizations** (General Contractor, Subcontractor, Owner/Developer)
+- **5 projects** with various statuses and team assignments
+
+### Seeding the Database
+
+```bash
+# First time setup
+npm run migration:run
+npm run seed
+
+# Reset and re-seed
+npm run migration:revert
+npm run migration:run
+npm run seed
+```
+
+### Test Accounts
+
+| Role | Email | Password | Organization |
+|------|-------|----------|--------------|
+| System Admin | `admin@bobbuilder.com` | `Admin123!` | None |
+| Owner | `john.doe@acme.com` | `Password123!` | Acme Construction |
+| Owner | `mike.johnson@summit.com` | `Password123!` | Summit Builders |
+| Owner | `david.brown@elite.com` | `Password123!` | Elite Properties |
+
+**Quick test login:**
+```bash
+# Login as system admin
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@bobbuilder.com","password":"Admin123!"}'
+
+# Login as organization owner
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"john.doe@acme.com","password":"Password123!"}'
+```
+
+See **[Test Credentials Documentation](./docs/TEST_CREDENTIALS.md)** for:
+- Complete list of all 10 test users
+- Organization and project details
+- Role descriptions and permissions
+- API testing examples
+- Permission testing scenarios
+
 ## Documentation
 
+- [Test Credentials](./docs/TEST_CREDENTIALS.md) - Complete test user accounts and testing guide
 - [API Documentation](./docs/api/) - API endpoints and usage
 - [Architecture Overview](./docs/ARCHITECTURE.md) - System design and architecture
 - [Contributing Guidelines](./docs/CONTRIBUTING.md) - How to contribute to this project
+- [Permission Matrix](./docs/PERMISSION_MATRIX.md) - Role-based access control reference
+- [Multi-Level Roles](./docs/MULTI_LEVEL_ROLES.md) - Role system architecture
 
 ## Features
 

@@ -90,11 +90,37 @@ src/
 │   ├── filters/            # Exception filters for error handling
 │   ├── interceptors/       # Interceptors for request/response transformation
 │   ├── pipes/              # Validation and transformation pipes
+│   ├── logging/            # Structured logging with Pino
 │   └── decorators/         # Custom decorators for metadata
 ├── config/                 # Configuration management
 │   └── configuration.ts    # Environment variable mappings
 └── modules/                # Feature modules (organized by domain)
-    └── [feature-name]/     # Each feature is self-contained
+    ├── auth/               # Authentication & authorization
+    │   ├── guards/         # JWT auth guards
+    │   ├── strategies/     # Passport strategies
+    │   └── decorators/     # Auth decorators (@CurrentUser)
+    ├── users/              # User management
+    │   ├── entities/       # User entity
+    │   └── enums/          # Role enums (System, Org, Project)
+    ├── organizations/      # Organization management
+    │   └── entities/       # Organization & OrganizationMember entities
+    ├── projects/           # Project management
+    │   └── entities/       # Project & ProjectMember entities
+    ├── memberships/        # Membership operations
+    │   ├── controllers/    # Org/Project membership endpoints
+    │   └── services/       # Membership management logic
+    ├── permissions/        # RBAC permission system
+    │   ├── services/       # Permission checking & inheritance
+    │   ├── guards/         # Resource-specific guards
+    │   └── constants/      # Permission matrices
+    ├── cascade/            # Cascade operations (NEW in v0.3.0)
+    │   ├── services/       # User/Org/Project cascade services
+    │   ├── controllers/    # Cascade API endpoints
+    │   ├── dto/            # Deletion/restoration DTOs
+    │   └── interfaces/     # Cascade type definitions
+    ├── health/             # Health check endpoints
+    └── database/           # Database configuration
+    └── [feature-name]/     # Generic feature structure
         ├── [feature].module.ts
         ├── [feature].controller.ts
         ├── [feature].service.ts
@@ -102,6 +128,31 @@ src/
         ├── entities/       # Database entities
         └── interfaces/     # TypeScript interfaces
 ```
+
+### Cascade Module (v0.3.0)
+
+The cascade module provides safe deletion and restoration operations with referential integrity:
+
+**Key Features:**
+- Transaction-based deletion for atomicity
+- Soft delete support with recovery options
+- Sole owner protection (prevents orphaned organizations)
+- Impact preview before deletion
+- Permission cache invalidation
+- Cascading deletion across entity relationships
+
+**Services:**
+- `UserCascadeService`: Deletes users from all organizations/projects
+- `OrganizationCascadeService`: Deletes organizations and all their projects
+- `ProjectCascadeService`: Deletes projects and removes all members
+
+**Endpoints:**
+- Delete operations with cascading effects
+- Restoration endpoints for soft-deleted entities
+- Validation endpoints to check deletion blockers
+- Impact preview endpoints to show what will be affected
+
+See [CASCADE_OPERATIONS.md](../docs/CASCADE_OPERATIONS.md) for detailed documentation.
 
 ### TypeScript Configuration
 
