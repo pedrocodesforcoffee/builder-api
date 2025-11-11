@@ -11,6 +11,7 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
 import { ProjectsModule } from './modules/projects/projects.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { RelationshipsModule } from './modules/relationships/relationships.module';
+import { SearchModule } from './modules/search/search.module';
 // Temporarily disabled due to TypeScript compilation errors
 // import { MembershipsModule } from './modules/memberships/memberships.module';
 // import { CascadeModule } from './modules/cascade/cascade.module';
@@ -29,6 +30,7 @@ import { RelationshipsModule } from './modules/relationships/relationships.modul
     ProjectsModule,
     MetricsModule,
     RelationshipsModule,
+    SearchModule,
     // Temporarily disabled - has TypeScript errors in permissions module
     // MembershipsModule,
     // CascadeModule,
