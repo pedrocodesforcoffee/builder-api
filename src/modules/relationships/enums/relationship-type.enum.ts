@@ -1,0 +1,7 @@
+export enum RelationshipType {
+  PARENT_CHILD = 'PARENT_CHILD',
+  PROGRAM = 'PROGRAM',
+  MASTER = 'MASTER',
+  DEPENDENCY = 'DEPENDENCY',
+  RELATED = 'RELATED',
+}
