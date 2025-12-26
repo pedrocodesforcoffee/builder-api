@@ -42,8 +42,8 @@
     "seed:commitments": "ts-node -r tsconfig-paths/register src/database/seeds/seed-commitments.ts",
     "seed:change-orders": "ts-node -r tsconfig-paths/register src/database/seeds/seed-change-orders.ts",
     "seed:submittals": "ts-node -r tsconfig-paths/register src/database/seeds/seed-submittals.ts",
-    "seed:reset": "npm run migration:revert && npm run migration:run && npm run seed",
-    "db:reset": "npm run migration:revert && npm run migration:run && npm run seed:dashboard"
+    "seed:reset": "npm run seed",
+    "db:reset": "npm run seed:dashboard"
   },
   "keywords": [
     "construction",

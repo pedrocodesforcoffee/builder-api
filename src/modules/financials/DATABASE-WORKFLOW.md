@@ -6,6 +6,8 @@ This document explains our database management strategy for the Financials modul
 
 We are currently in **active development with no production users**. This allows us to use a faster, more flexible workflow.
 
+**Note:** All legacy migrations have been removed (December 2024). We're using entity-first development with `synchronize: true`. Fresh migrations will be generated before production launch.
+
 ### Development Workflow (CURRENT)
 
 **Configuration:**
@@ -71,15 +73,23 @@ DB_SYNCHRONIZE=false
 Create a single clean migration from all your current entities:
 
 ```bash
+# First, create the migrations folder
+mkdir -p src/migrations
+
 # Generate migration from current entity state
-npm run migration:generate -- -n InitialFinancials
+npm run migration:generate -- -n InitialProductionSchema
 
 # Review the generated migration in src/migrations/
 # Make sure it creates all tables correctly
 
-# Run the migration
+# Test the migration in development
 npm run migration:run
+
+# Verify migration worked
+npm run migration:show
 ```
+
+**Important:** This will be a single comprehensive migration containing ALL entities (users, organizations, projects, financials, RFIs, submittals, daily reports, punch lists, etc.).
 
 ### Step 3: From This Point Forward
 
@@ -231,23 +241,27 @@ npm run start:dev
 
 ## Summary
 
-### NOW (Development Phase)
-- ✅ Use `DB_SYNCHRONIZE=true`
-- ✅ Edit entities directly
-- ✅ Reset database freely
+### NOW (Development Phase - Current)
+- ✅ Use `DB_SYNCHRONIZE=true` (active in .env)
+- ✅ Edit entities directly - schema updates automatically
+- ✅ Reset database freely with `npm run db:reset`
 - ✅ Use seed scripts for test data
+- ✅ No migrations folder - removed in December 2024
 - ❌ Don't write migrations yet
 
-### BEFORE PRODUCTION
-- ✅ Set `DB_SYNCHRONIZE=false` everywhere
-- ✅ Generate initial migration from entities
-- ✅ Test migration in staging
+### BEFORE PRODUCTION (Transition Plan)
+- ✅ Set `DB_SYNCHRONIZE=false` in production environment
+- ✅ Create migrations folder: `mkdir -p src/migrations`
+- ✅ Generate initial migration from all current entities
+- ✅ Test migration thoroughly in staging
 - ✅ Document rollback procedures
 - ❌ Never use `synchronize: true` in production
 
-### AFTER PRODUCTION
-- ✅ All schema changes via migrations
+### AFTER PRODUCTION (Strict Migration Workflow)
+- ✅ All schema changes via migrations only
 - ✅ Review migrations in pull requests
-- ✅ Test in staging before production
+- ✅ Test in staging before production deployment
 - ✅ Keep migrations small and atomic
+- ✅ Maintain working `down()` methods for rollback
 - ❌ Never manually alter production database schema
+- ❌ Never use `synchronize: true` in production

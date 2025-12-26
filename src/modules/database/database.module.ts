@@ -12,12 +12,14 @@ import { HealthCheck } from './healthcheck.entity';
  * IMPORTANT: Schema Management Strategy
  * -------------------------------------
  * Currently using synchronize:true for development (no production users yet).
+ * TypeORM automatically creates and updates database schema from entity definitions.
+ *
  * See src/modules/financials/DATABASE-WORKFLOW.md for full documentation on:
- * - Development workflow (synchronize: true)
- * - Production transition plan (migrations)
+ * - Development workflow (entity-first with synchronize: true)
+ * - Production transition plan (will generate migrations before launch)
  * - When and how to generate migrations
  *
- * Before production: Set DB_SYNCHRONIZE=false and generate migrations!
+ * Before production: Set DB_SYNCHRONIZE=false and generate fresh migrations!
  */
 
 @Module({
@@ -33,8 +35,6 @@ import { HealthCheck } from './healthcheck.entity';
         username: configService.get<string>('database.user'),
         password: configService.get<string>('database.password'),
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-        migrations: [__dirname + '/../../migrations/*{.ts,.js}'],
-        migrationsTableName: 'migrations',
         synchronize: configService.get<boolean>('database.synchronize'),
         logging: configService.get<boolean>('database.logging'),
         ssl: configService.get<boolean>('database.ssl') ? { rejectUnauthorized: false } : false,
