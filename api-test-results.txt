@@ -1,0 +1,77 @@
+==========================================
+Testing Payment Application API Endpoints
+==========================================
+
+Getting commitment ID for SC-001...
+Commitment ID: ccbca624-f052-45ec-9760-69b2baa8c7e9
+
+==========================================
+TEST 1: List Schedule of Values
+==========================================
+GET http://localhost:3000/api/v1/projects/a6074e71-6f3f-40c0-a201-1e87b238df81/schedule-of-values
+
+/Users/pperes/WorkSpace/BobTheBuilder/builder-api/test-payapp-endpoints.sh: line 28: jq: command not found
+
+
+==========================================
+TEST 2: Get SOV by Commitment (with items)
+==========================================
+GET http://localhost:3000/api/v1/projects/a6074e71-6f3f-40c0-a201-1e87b238df81/schedule-of-values/commitment/ccbca624-f052-45ec-9760-69b2baa8c7e9?includeItems=true
+
+/Users/pperes/WorkSpace/BobTheBuilder/builder-api/test-payapp-endpoints.sh: line 40: jq: command not found
+
+
+==========================================
+TEST 3: List Payment Applications
+==========================================
+GET http://localhost:3000/api/v1/projects/a6074e71-6f3f-40c0-a201-1e87b238df81/payment-applications
+
+/Users/pperes/WorkSpace/BobTheBuilder/builder-api/test-payapp-endpoints.sh: line 52: jq: command not found
+
+
+==========================================
+TEST 4: List Payment Applications (with items)
+==========================================
+GET http://localhost:3000/api/v1/projects/a6074e71-6f3f-40c0-a201-1e87b238df81/payment-applications?includeItems=true
+
+/Users/pperes/WorkSpace/BobTheBuilder/builder-api/test-payapp-endpoints.sh: line 64: jq: command not found
+
+
+==========================================
+TEST 5: Get Payment Applications by Commitment
+==========================================
+GET http://localhost:3000/api/v1/projects/a6074e71-6f3f-40c0-a201-1e87b238df81/payment-applications/commitment/ccbca624-f052-45ec-9760-69b2baa8c7e9
+
+/Users/pperes/WorkSpace/BobTheBuilder/builder-api/test-payapp-endpoints.sh: line 76: jq: command not found
+
+
+Getting payment application ID...
+Payment App ID: c95ec8e3-1c20-4ba8-a494-0d1addd38ef3
+
+==========================================
+TEST 6: Get Single Payment Application (with items)
+==========================================
+GET http://localhost:3000/api/v1/projects/a6074e71-6f3f-40c0-a201-1e87b238df81/payment-applications/c95ec8e3-1c20-4ba8-a494-0d1addd38ef3
+
+/Users/pperes/WorkSpace/BobTheBuilder/builder-api/test-payapp-endpoints.sh: line 94: jq: command not found
+
+
+==========================================
+TEST 7: List All Lien Waivers
+==========================================
+GET http://localhost:3000/api/v1/projects/a6074e71-6f3f-40c0-a201-1e87b238df81/lien-waivers
+
+/Users/pperes/WorkSpace/BobTheBuilder/builder-api/test-payapp-endpoints.sh: line 106: jq: command not found
+
+
+==========================================
+TEST 8: Get Lien Waivers by Payment Application
+==========================================
+GET http://localhost:3000/api/v1/projects/a6074e71-6f3f-40c0-a201-1e87b238df81/lien-waivers/payment-application/c95ec8e3-1c20-4ba8-a494-0d1addd38ef3
+
+/Users/pperes/WorkSpace/BobTheBuilder/builder-api/test-payapp-endpoints.sh: line 118: jq: command not found
+
+
+==========================================
+All Tests Completed!
+==========================================

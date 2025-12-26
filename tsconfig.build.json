@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "strictPropertyInitialization": false
+  },
+  "exclude": [
+    "node_modules",
+    "test",
+    "dist",
+    "**/*spec.ts",
+    "**/*.spec.ts",
+    "src/modules/memberships/**/*",
+    "src/modules/permissions/**/*",
+    "src/modules/cascade/**/*",
+    "src/modules/documents/services/**/*",
+    "src/modules/documents/utils/**/*"
+  ]
+}

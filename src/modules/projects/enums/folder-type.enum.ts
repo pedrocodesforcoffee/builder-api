@@ -1,0 +1,28 @@
+/**
+ * Folder Type Enumeration
+ *
+ * Defines standard folder categories for construction project organization
+ */
+export enum FolderType {
+  GENERAL = 'GENERAL',
+  DRAWINGS = 'DRAWINGS',
+  SPECIFICATIONS = 'SPECIFICATIONS',
+  RFIS = 'RFIS',
+  SUBMITTALS = 'SUBMITTALS',
+  PHOTOS = 'PHOTOS',
+  REPORTS = 'REPORTS',
+  CONTRACTS = 'CONTRACTS',
+  SCHEDULES = 'SCHEDULES',
+  PERMITS = 'PERMITS',
+  CORRESPONDENCE = 'CORRESPONDENCE',
+  MEETING_NOTES = 'MEETING_NOTES',
+  PUNCH_LIST = 'PUNCH_LIST',
+  CLOSEOUT = 'CLOSEOUT',
+  FINANCIAL = 'FINANCIAL',
+  SAFETY = 'SAFETY',
+  QUALITY = 'QUALITY',
+  TESTING = 'TESTING',
+  AS_BUILTS = 'AS_BUILTS',
+  WARRANTIES = 'WARRANTIES',
+  CUSTOM = 'CUSTOM',
+}

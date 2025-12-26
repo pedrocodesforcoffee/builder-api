@@ -1,0 +1,7 @@
+export enum ProgramType {
+  PORTFOLIO = 'PORTFOLIO',
+  INITIATIVE = 'INITIATIVE',
+  CAMPAIGN = 'CAMPAIGN',
+  REGION = 'REGION',
+  CUSTOM = 'CUSTOM',
+}

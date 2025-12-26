@@ -1,0 +1,504 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  CopyObjectCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
+  HeadObjectCommand,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Readable } from 'stream';
+import { S3_BUCKETS } from '../constants/s3-buckets';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { createReadStream, existsSync, mkdirSync } from 'fs';
+
+/**
+ * S3 Service
+ *
+ * Provides S3 operations for document storage including:
+ * - Single file uploads with pre-signed URLs
+ * - Multipart uploads for large files
+ * - Object management (get, delete, copy)
+ * - Pre-signed URL generation
+ */
+@Injectable()
+export class S3Service {
+  private readonly logger = new Logger(S3Service.name);
+  private readonly s3Client!: S3Client;
+  private readonly bucket: string;
+  private readonly region: string;
+  private readonly useMockS3: boolean;
+  private readonly mockStoragePath: string;
+  private readonly multipartUploads: Map<string, Array<{ PartNumber: number; ETag: string; data: Buffer }>> = new Map();
+
+  constructor(private configService: ConfigService) {
+    this.region = this.configService.get<string>('AWS_REGION') || 'us-east-1';
+    this.bucket =
+      this.configService.get<string>('AWS_S3_BUCKET') || 'builder-documents';
+
+    // Check if mock S3 is enabled
+    this.useMockS3 = this.configService.get<boolean>('USE_MOCK_S3') === true ||
+                     this.configService.get<string>('USE_MOCK_S3') === 'true';
+
+    this.mockStoragePath = path.join(process.cwd(), 'mock-s3-storage');
+
+    if (this.useMockS3) {
+      this.logger.log(`S3 Service initialized in MOCK MODE - storing files locally at: ${this.mockStoragePath}`);
+      // Create mock storage directories
+      this.initializeMockStorage();
+    } else {
+      const endpoint = this.configService.get<string>('AWS_ENDPOINT');
+      const s3Config: any = {
+        region: this.region,
+        credentials: {
+          accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID') || '',
+          secretAccessKey:
+            this.configService.get<string>('AWS_SECRET_ACCESS_KEY') || '',
+        },
+      };
+
+      // Add endpoint if configured (for MinIO/LocalStack)
+      if (endpoint) {
+        s3Config.endpoint = endpoint;
+        s3Config.forcePathStyle = true; // Required for MinIO
+        this.logger.log(`S3 Service using custom endpoint: ${endpoint}`);
+      }
+
+      this.s3Client = new S3Client(s3Config);
+      this.logger.log(`S3 Service initialized with bucket: ${this.bucket}`);
+    }
+  }
+
+  /**
+   * Initialize mock storage directories
+   */
+  private initializeMockStorage(): void {
+    [S3_BUCKETS.QUARANTINE, S3_BUCKETS.PRODUCTION, this.bucket].forEach(bucketName => {
+      const bucketPath = path.join(this.mockStoragePath, bucketName);
+      if (!existsSync(bucketPath)) {
+        mkdirSync(bucketPath, { recursive: true });
+        this.logger.debug(`Created mock S3 bucket directory: ${bucketPath}`);
+      }
+    });
+  }
+
+  /**
+   * Get local file path for mock S3
+   */
+  private getMockFilePath(key: string, bucket?: string): string {
+    const bucketName = bucket || this.bucket;
+    return path.join(this.mockStoragePath, bucketName, key);
+  }
+
+  /**
+   * Get the default bucket name
+   */
+  getBucket(): string {
+    return this.bucket;
+  }
+
+  /**
+   * Get the quarantine bucket name (SECURITY CRITICAL)
+   *
+   * Files are uploaded here first and remain until virus scan passes
+   */
+  getQuarantineBucket(): string {
+    return S3_BUCKETS.QUARANTINE;
+  }
+
+  /**
+   * Get the production bucket name (SECURITY CRITICAL)
+   *
+   * Only verified, safe files are stored here
+   */
+  getProductionBucket(): string {
+    return S3_BUCKETS.PRODUCTION;
+  }
+
+  /**
+   * Move an object from quarantine to production bucket (SECURITY CRITICAL)
+   *
+   * This should ONLY be called after virus scan passes
+   */
+  async moveFromQuarantineToProduction(key: string): Promise<void> {
+    // Copy from quarantine to production
+    const command = new CopyObjectCommand({
+      Bucket: S3_BUCKETS.PRODUCTION,
+      CopySource: `${S3_BUCKETS.QUARANTINE}/${key}`,
+      Key: key,
+    });
+
+    await this.s3Client.send(command);
+
+    // Delete from quarantine
+    await this.deleteObject(key, S3_BUCKETS.QUARANTINE);
+
+    this.logger.log(
+      `Moved object from quarantine to production: ${key}`,
+    );
+  }
+
+  // ==================== PRE-SIGNED URLS ====================
+
+  /**
+   * Generate a pre-signed PUT URL for direct uploads
+   *
+   * SECURITY: Includes conditions to prevent abuse
+   */
+  async getPresignedPutUrl(
+    key: string,
+    contentType: string,
+    expiresIn: number = 900,
+    maxFileSize?: number,
+    bucket?: string,
+  ): Promise<string> {
+    const command = new PutObjectCommand({
+      Bucket: bucket || this.bucket,
+      Key: key,
+      ContentType: contentType,
+      // SECURITY: Add metadata to track upload source
+      Metadata: {
+        'uploaded-via': 'presigned-url',
+        'upload-timestamp': Date.now().toString(),
+      },
+    });
+
+    // SECURITY: Add conditions if maxFileSize is specified
+    const signOptions: any = { expiresIn };
+
+    if (maxFileSize) {
+      // Note: AWS SDK v3 doesn't support content-length-range in getSignedUrl
+      // This would need to be enforced at the application level
+      this.logger.debug(
+        `Generated pre-signed URL for ${key} with max size ${maxFileSize}`,
+      );
+    }
+
+    return getSignedUrl(this.s3Client, command, signOptions);
+  }
+
+  /**
+   * Generate a pre-signed GET URL for downloads
+   *
+   * SECURITY: Includes response headers for content security
+   */
+  async getPresignedGetUrl(
+    key: string,
+    expiresIn: number = 3600,
+    bucket?: string,
+    options?: {
+      forceDownload?: boolean;
+      fileName?: string;
+      contentType?: string;
+    },
+  ): Promise<string> {
+    const commandInput: any = {
+      Bucket: bucket || this.bucket,
+      Key: key,
+    };
+
+    // SECURITY: Add security headers for downloads
+    if (options?.forceDownload) {
+      commandInput.ResponseContentDisposition = `attachment; filename="${
+        options.fileName || key.split('/').pop()
+      }"`;
+    }
+
+    // SECURITY: Override content type if specified (e.g., force download for dangerous types)
+    if (options?.contentType) {
+      commandInput.ResponseContentType = options.contentType;
+    }
+
+    const command = new GetObjectCommand(commandInput);
+
+    return getSignedUrl(this.s3Client, command, { expiresIn });
+  }
+
+  // ==================== MULTIPART UPLOAD ====================
+
+  /**
+   * Initiate a multipart upload
+   * Returns the S3 upload ID
+   */
+  async createMultipartUpload(
+    key: string,
+    contentType: string,
+  ): Promise<string> {
+    const command = new CreateMultipartUploadCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    const response = await this.s3Client.send(command);
+
+    if (!response.UploadId) {
+      throw new Error('Failed to create multipart upload');
+    }
+
+    this.logger.debug(
+      `Created multipart upload for ${key}: ${response.UploadId}`,
+    );
+
+    return response.UploadId;
+  }
+
+  /**
+   * Generate a pre-signed URL for uploading a specific part
+   */
+  async getPresignedUploadPartUrl(
+    key: string,
+    uploadId: string,
+    partNumber: number,
+    expiresIn: number = 900,
+  ): Promise<string> {
+    const command = new UploadPartCommand({
+      Bucket: this.bucket,
+      Key: key,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+    });
+
+    return getSignedUrl(this.s3Client, command, { expiresIn });
+  }
+
+  /**
+   * Complete a multipart upload
+   */
+  async completeMultipartUpload(
+    key: string,
+    uploadId: string,
+    parts: Array<{ PartNumber: number; ETag: string }>,
+  ): Promise<void> {
+    const command = new CompleteMultipartUploadCommand({
+      Bucket: this.bucket,
+      Key: key,
+      UploadId: uploadId,
+      MultipartUpload: {
+        Parts: parts.map((part) => ({
+          PartNumber: part.PartNumber,
+          ETag: part.ETag,
+        })),
+      },
+    });
+
+    await this.s3Client.send(command);
+
+    this.logger.debug(
+      `Completed multipart upload for ${key} with ${parts.length} parts`,
+    );
+  }
+
+  /**
+   * Abort a multipart upload and cleanup parts
+   */
+  async abortMultipartUpload(key: string, uploadId: string): Promise<void> {
+    const command = new AbortMultipartUploadCommand({
+      Bucket: this.bucket,
+      Key: key,
+      UploadId: uploadId,
+    });
+
+    await this.s3Client.send(command);
+
+    this.logger.debug(`Aborted multipart upload for ${key}`);
+  }
+
+  // ==================== OBJECT OPERATIONS ====================
+
+  /**
+   * Get an object as a buffer
+   */
+  async getObject(key: string, bucket?: string): Promise<Buffer> {
+    // Mock S3 implementation
+    if (this.useMockS3) {
+      const filePath = this.getMockFilePath(key, bucket);
+      this.logger.debug(`[MOCK S3 getObject] Reading file from: ${filePath}`);
+      this.logger.debug(`[MOCK S3 getObject] Bucket: ${bucket}, Key: ${key}`);
+      try {
+        const buffer = await fs.readFile(filePath);
+        this.logger.debug(`[MOCK S3 getObject] Successfully read ${buffer.length} bytes from: ${filePath}`);
+        return buffer;
+      } catch (error) {
+        this.logger.error(`[MOCK S3 getObject] Failed to read file: ${filePath}`);
+        this.logger.error(`[MOCK S3 getObject] Error details:`, error);
+        throw new Error(`Object not found: ${key}`);
+      }
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: bucket || this.bucket,
+      Key: key,
+    });
+
+    const response = await this.s3Client.send(command);
+
+    if (!response.Body) {
+      throw new Error(`Object not found: ${key}`);
+    }
+
+    const stream = response.Body as Readable;
+    const chunks: Buffer[] = [];
+
+    return new Promise((resolve, reject) => {
+      stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      stream.on('error', reject);
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+  }
+
+  /**
+   * Get an object as a readable stream
+   */
+  async getObjectStream(key: string, bucket?: string): Promise<Readable> {
+    const command = new GetObjectCommand({
+      Bucket: bucket || this.bucket,
+      Key: key,
+    });
+
+    const response = await this.s3Client.send(command);
+
+    if (!response.Body) {
+      throw new Error(`Object not found: ${key}`);
+    }
+
+    return response.Body as Readable;
+  }
+
+  /**
+   * Put an object to S3
+   */
+  async putObject(
+    key: string,
+    body: Buffer | Readable | string,
+    contentType: string,
+    bucket?: string,
+  ): Promise<void> {
+    if (this.useMockS3) {
+      // Mock S3: Write file to local filesystem
+      const filePath = this.getMockFilePath(key, bucket);
+      const dirPath = path.dirname(filePath);
+
+      // Ensure directory exists
+      await fs.mkdir(dirPath, { recursive: true });
+
+      // Convert body to Buffer if it's a string or Readable
+      let buffer: Buffer;
+      if (Buffer.isBuffer(body)) {
+        buffer = body;
+      } else if (typeof body === 'string') {
+        buffer = Buffer.from(body);
+      } else {
+        // It's a Readable stream
+        const chunks: Buffer[] = [];
+        for await (const chunk of body) {
+          chunks.push(Buffer.from(chunk));
+        }
+        buffer = Buffer.concat(chunks);
+      }
+
+      await fs.writeFile(filePath, buffer);
+      this.logger.debug(`[MOCK S3] Put object: ${key} -> ${filePath}`);
+      return;
+    }
+
+    const command = new PutObjectCommand({
+      Bucket: bucket || this.bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    });
+
+    await this.s3Client.send(command);
+
+    this.logger.debug(`Put object: ${key}`);
+  }
+
+  /**
+   * Copy an object within S3
+   */
+  async copyObject(
+    sourceKey: string,
+    destKey: string,
+    bucket?: string,
+  ): Promise<void> {
+    const bucketName = bucket || this.bucket;
+    const command = new CopyObjectCommand({
+      Bucket: bucketName,
+      CopySource: `${bucketName}/${sourceKey}`,
+      Key: destKey,
+    });
+
+    await this.s3Client.send(command);
+
+    this.logger.debug(`Copied object from ${sourceKey} to ${destKey}`);
+  }
+
+  /**
+   * Delete an object from S3
+   */
+  async deleteObject(key: string, bucket?: string): Promise<void> {
+    const command = new DeleteObjectCommand({
+      Bucket: bucket || this.bucket,
+      Key: key,
+    });
+
+    await this.s3Client.send(command);
+
+    this.logger.debug(`Deleted object: ${key}`);
+  }
+
+  /**
+   * Check if an object exists
+   */
+  async objectExists(key: string, bucket?: string): Promise<boolean> {
+    try {
+      const command = new HeadObjectCommand({
+        Bucket: bucket || this.bucket,
+        Key: key,
+      });
+
+      await this.s3Client.send(command);
+      return true;
+    } catch (error: any) {
+      if (error.name === 'NotFound') {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get object metadata
+   */
+  async getObjectMetadata(
+    key: string,
+    bucket?: string,
+  ): Promise<{
+    contentLength?: number;
+    contentType?: string;
+    lastModified?: Date;
+    etag?: string;
+  }> {
+    const command = new HeadObjectCommand({
+      Bucket: bucket || this.bucket,
+      Key: key,
+    });
+
+    const response = await this.s3Client.send(command);
+
+    return {
+      contentLength: response.ContentLength,
+      contentType: response.ContentType,
+      lastModified: response.LastModified,
+      etag: response.ETag,
+    };
+  }
+}
