@@ -46,6 +46,7 @@ import { ProjectMember } from '../projects/entities/project-member.entity';
 import { CostCode } from '../financials/entities/cost-code.entity';
 import { BudgetLineItem } from '../financials/entities/budget-line-item.entity';
 import { Organization } from '../organizations/entities/organization.entity';
+import { User } from '../users/entities/user.entity';
 
 // Controllers
 import { AiController } from './controllers/ai.controller';
@@ -91,6 +92,7 @@ import { AiSchedulerService } from './schedulers/ai-scheduler.service';
       CostCode,
       BudgetLineItem,
       Organization,
+      User,
     ]),
   ],
   providers: [

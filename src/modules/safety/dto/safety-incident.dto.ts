@@ -388,6 +388,110 @@ export class QueryIncidentsDto {
 }
 
 /**
+ * Response DTO for incident investigation
+ */
+export class InvestigationResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  incidentId: string;
+
+  @ApiProperty({ enum: InvestigationStatus })
+  status: InvestigationStatus;
+
+  @ApiPropertyOptional()
+  investigationStartDate?: Date;
+
+  @ApiPropertyOptional()
+  investigationCompletedDate?: Date;
+
+  @ApiPropertyOptional()
+  investigatorId?: string;
+
+  @ApiPropertyOptional()
+  investigator?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+  };
+
+  @ApiPropertyOptional()
+  investigationTeam?: any[];
+
+  @ApiPropertyOptional()
+  factsSummary?: string;
+
+  @ApiPropertyOptional()
+  sequenceOfEvents?: string;
+
+  @ApiPropertyOptional()
+  rootCauseAnalysis?: string;
+
+  @ApiPropertyOptional()
+  immediateCorrectiveActions?: string;
+
+  @ApiPropertyOptional()
+  recommendations?: string[];
+
+  @ApiPropertyOptional()
+  preventionStrategy?: string;
+
+  @ApiPropertyOptional()
+  findingsSummary?: string;
+
+  @ApiPropertyOptional()
+  conclusionRecommendations?: string;
+
+  @ApiProperty()
+  trainingRequired: boolean;
+
+  @ApiPropertyOptional()
+  trainingDescription?: string;
+
+  @ApiProperty()
+  policyChangeRequired: boolean;
+
+  @ApiPropertyOptional()
+  policyChangeDescription?: string;
+
+  @ApiPropertyOptional()
+  reviewedById?: string;
+
+  @ApiPropertyOptional()
+  reviewedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+  };
+
+  @ApiPropertyOptional()
+  reviewedAt?: Date;
+
+  @ApiPropertyOptional()
+  approvedById?: string;
+
+  @ApiPropertyOptional()
+  approvedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+  };
+
+  @ApiPropertyOptional()
+  approvedAt?: Date;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+}
+
+/**
  * Response DTO for safety incident
  */
 export class SafetyIncidentResponseDto {
@@ -561,106 +665,3 @@ export class SafetyIncidentResponseDto {
   };
 }
 
-/**
- * Response DTO for incident investigation
- */
-export class InvestigationResponseDto {
-  @ApiProperty()
-  id: string;
-
-  @ApiProperty()
-  incidentId: string;
-
-  @ApiProperty({ enum: InvestigationStatus })
-  status: InvestigationStatus;
-
-  @ApiPropertyOptional()
-  investigationStartDate?: Date;
-
-  @ApiPropertyOptional()
-  investigationCompletedDate?: Date;
-
-  @ApiPropertyOptional()
-  investigatorId?: string;
-
-  @ApiPropertyOptional()
-  investigator?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    fullName: string;
-  };
-
-  @ApiPropertyOptional()
-  investigationTeam?: any[];
-
-  @ApiPropertyOptional()
-  factsSummary?: string;
-
-  @ApiPropertyOptional()
-  sequenceOfEvents?: string;
-
-  @ApiPropertyOptional()
-  rootCauseAnalysis?: string;
-
-  @ApiPropertyOptional()
-  immediateCorrectiveActions?: string;
-
-  @ApiPropertyOptional()
-  recommendations?: string[];
-
-  @ApiPropertyOptional()
-  preventionStrategy?: string;
-
-  @ApiPropertyOptional()
-  findingsSummary?: string;
-
-  @ApiPropertyOptional()
-  conclusionRecommendations?: string;
-
-  @ApiProperty()
-  trainingRequired: boolean;
-
-  @ApiPropertyOptional()
-  trainingDescription?: string;
-
-  @ApiProperty()
-  policyChangeRequired: boolean;
-
-  @ApiPropertyOptional()
-  policyChangeDescription?: string;
-
-  @ApiPropertyOptional()
-  reviewedById?: string;
-
-  @ApiPropertyOptional()
-  reviewedBy?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    fullName: string;
-  };
-
-  @ApiPropertyOptional()
-  reviewedAt?: Date;
-
-  @ApiPropertyOptional()
-  approvedById?: string;
-
-  @ApiPropertyOptional()
-  approvedBy?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    fullName: string;
-  };
-
-  @ApiPropertyOptional()
-  approvedAt?: Date;
-
-  @ApiProperty()
-  createdAt: Date;
-
-  @ApiProperty()
-  updatedAt: Date;
-}
