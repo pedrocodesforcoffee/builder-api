@@ -33,17 +33,9 @@
     "migration:run": "npm run build && typeorm-ts-node-commonjs migration:run -d ./dist/ormconfig.js",
     "migration:revert": "npm run build && typeorm-ts-node-commonjs migration:revert -d ./dist/ormconfig.js",
     "migration:show": "npm run build && typeorm-ts-node-commonjs migration:show -d ./dist/ormconfig.js",
-    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/seed-fixed.ts",
-    "seed:simple": "ts-node -r tsconfig-paths/register src/database/seeds/seed-simple.ts",
-    "seed:fixed": "ts-node -r tsconfig-paths/register src/database/seeds/seed-fixed.ts",
-    "seed:dashboard": "ts-node -r tsconfig-paths/register src/database/seeds/seed-dashboard.ts",
-    "seed:budgets": "ts-node -r tsconfig-paths/register src/database/seeds/seed-budgets.ts",
-    "seed:csi-codes": "ts-node -r tsconfig-paths/register src/database/seeds/seed-csi-cost-codes.ts",
-    "seed:commitments": "ts-node -r tsconfig-paths/register src/database/seeds/seed-commitments.ts",
-    "seed:change-orders": "ts-node -r tsconfig-paths/register src/database/seeds/seed-change-orders.ts",
-    "seed:submittals": "ts-node -r tsconfig-paths/register src/database/seeds/seed-submittals.ts",
-    "seed:reset": "npm run seed",
-    "db:reset": "npm run seed:dashboard"
+    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/seed-master.ts",
+    "seed:master": "ts-node -r tsconfig-paths/register src/database/seeds/seed-master.ts",
+    "db:reset": "npm run seed"
   },
   "keywords": [
     "construction",
