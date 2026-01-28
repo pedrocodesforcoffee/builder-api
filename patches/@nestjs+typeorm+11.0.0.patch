@@ -1,0 +1,12 @@
+diff --git a/node_modules/@nestjs/typeorm/dist/common/typeorm.utils.js b/node_modules/@nestjs/typeorm/dist/common/typeorm.utils.js
+index ac6eeb1..e63204c 100644
+--- a/node_modules/@nestjs/typeorm/dist/common/typeorm.utils.js
++++ b/node_modules/@nestjs/typeorm/dist/common/typeorm.utils.js
+@@ -8,6 +8,7 @@ exports.getDataSourcePrefix = getDataSourcePrefix;
+ exports.getEntityManagerToken = getEntityManagerToken;
+ exports.handleRetry = handleRetry;
+ exports.getDataSourceName = getDataSourceName;
++const crypto = require("crypto");
+ const common_1 = require("@nestjs/common");
+ const operators_1 = require("rxjs/operators");
+ const typeorm_1 = require("typeorm");

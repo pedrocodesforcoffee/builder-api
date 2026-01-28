@@ -100,18 +100,23 @@ export class ProjectController {
    *
    * Returns all projects the user has access to.
    * Optionally filter by organization, status, or archived status.
+   * Supports server-side search, sorting, and pagination.
    *
    * @param myProjects - If true, only return projects the user is a member of
    * @param organizationId - Filter to specific organization
    * @param status - Filter to specific status
    * @param includeArchived - Include archived projects (default: false)
+   * @param search - Search by project name, number, address, city, state
+   * @param sortBy - Sort by 'name', 'updated', or 'created' (default: 'created')
+   * @param limit - Max results to return (default: 50, max: 100)
+   * @param offset - Number of results to skip (for pagination)
    * @param req - Request with authenticated user
    * @returns Array of projects
    *
    * @example
    * Request:
    * ```
-   * GET /projects?myProjects=true&organizationId=uuid&status=active&includeArchived=false
+   * GET /projects?myProjects=true&search=tower&status=active&sortBy=updated&limit=10
    * ```
    *
    * Success Response (200):
@@ -145,11 +150,24 @@ export class ProjectController {
     status?: ProjectStatus,
     @Query('includeArchived', new DefaultValuePipe(false), ParseBoolPipe)
     includeArchived?: boolean,
+    @Query('search') search?: string,
+    @Query('sortBy', new DefaultValuePipe('created')) sortBy?: string,
+    @Query('limit', new DefaultValuePipe(50)) limit?: number,
+    @Query('offset', new DefaultValuePipe(0)) offset?: number,
     @Req() req?: Request,
   ): Promise<ProjectResponseDto[]> {
     const userId = myProjects ? (req as any).user.id : undefined;
-    console.log(`[ProjectController] findAll - myProjects: ${myProjects}, userId: ${userId}, organizationId: ${organizationId}, status: ${status}, includeArchived: ${includeArchived}`);
-    return this.projectService.findAll(userId, organizationId, status, includeArchived);
+    console.log(`[ProjectController] findAll - myProjects: ${myProjects}, userId: ${userId}, organizationId: ${organizationId}, status: ${status}, includeArchived: ${includeArchived}, search: ${search}, sortBy: ${sortBy}, limit: ${limit}, offset: ${offset}`);
+    return this.projectService.findAll(
+      userId,
+      organizationId,
+      status,
+      includeArchived,
+      search,
+      sortBy,
+      limit,
+      offset,
+    );
   }
 
   /**

@@ -125,19 +125,22 @@ export class FinancialDashboardController {
   async getKPIs(@Param('projectId') projectId: string): Promise<FinancialKPIDto> {
     this.logger.log(`Getting KPIs for project ${projectId}`);
 
-    // Fetch data from multiple sources in parallel
-    const [budgets, costSummary, commitments, approvedOcos] = await Promise.all([
-      this.budgetService.findAllByProject(projectId, {}),
-      this.costSummaryService.getSummaryByProject(projectId),
-      this.commitmentService.findAll(projectId),
-      this.ownerChangeOrderService.findAll(projectId, OcoStatus.APPROVED),
-    ]);
+    try {
+      // Fetch data from multiple sources in parallel
+      const [budgets, costSummary, commitments, approvedOcos] = await Promise.all([
+        this.budgetService.findAllByProject(projectId, {}),
+        this.costSummaryService.getSummaryByProject(projectId),
+        this.commitmentService.findAll(projectId),
+        this.ownerChangeOrderService.findAll(projectId, OcoStatus.APPROVED),
+      ]);
+
+      this.logger.log(`Fetched data: budgets=${budgets?.length}, costSummary=${!!costSummary}, commitments=${commitments?.length}, approvedOcos=${approvedOcos?.length}`);
 
     // Get primary budget (first budget for the project)
     const primaryBudget = budgets?.[0];
 
-    const originalBudget = primaryBudget?.totalAmount || 0;
-    const currentBudget = primaryBudget?.totalAmount || 0; // Simple model: total = current
+    const originalBudget = Number(primaryBudget?.totalAmount) || 0;
+    const currentBudget = Number(primaryBudget?.totalAmount) || 0; // Simple model: total = current
     const contingency = 0; // Not tracked in BudgetResponseDto
 
     // Calculate approved change orders total
@@ -147,11 +150,11 @@ export class FinancialDashboardController {
     const totalCommitted = commitments.reduce((sum, c) => sum + Number(c.originalAmount || 0), 0);
 
     // Get actual costs from cost summary
-    const totalActualCost = costSummary?.totalActual || 0;
+    const totalActualCost = Number(costSummary?.totalActual) || 0;
 
     // Calculate contract values
-    const originalContractValue = originalBudget + contingency;
-    const currentContractValue = originalContractValue + approvedChangeOrders;
+    const originalContractValue = Number(originalBudget) + Number(contingency);
+    const currentContractValue = Number(originalContractValue) + Number(approvedChangeOrders);
 
     // Calculate percentages and variances
     const committedPercent = currentBudget > 0 ? (totalCommitted / currentBudget) * 100 : 0;
@@ -169,24 +172,28 @@ export class FinancialDashboardController {
     // Percent complete based on actual costs
     const percentComplete = actualPercent;
 
-    return {
-      originalContractValue: Number(originalContractValue.toFixed(2)),
-      approvedChangeOrders: Number(approvedChangeOrders.toFixed(2)),
-      currentContractValue: Number(currentContractValue.toFixed(2)),
-      originalBudget: Number(originalBudget.toFixed(2)),
-      currentBudget: Number(currentBudget.toFixed(2)),
-      contingencyRemaining: Number(contingency.toFixed(2)),
-      contingencyPercent: Number(contingencyPercent.toFixed(2)),
-      totalCommitted: Number(totalCommitted.toFixed(2)),
-      committedPercent: Number(committedPercent.toFixed(2)),
-      totalActualCost: Number(totalActualCost.toFixed(2)),
-      actualPercent: Number(actualPercent.toFixed(2)),
-      budgetVariance: Number(budgetVariance.toFixed(2)),
-      budgetVariancePercent: Number(budgetVariancePercent.toFixed(2)),
-      estimateAtCompletion: Number(estimateAtCompletion.toFixed(2)),
-      forecastVariance: Number(forecastVariance.toFixed(2)),
-      percentComplete: Number(percentComplete.toFixed(2)),
-    };
+      return {
+        originalContractValue: Number(originalContractValue.toFixed(2)),
+        approvedChangeOrders: Number(approvedChangeOrders.toFixed(2)),
+        currentContractValue: Number(currentContractValue.toFixed(2)),
+        originalBudget: Number(originalBudget.toFixed(2)),
+        currentBudget: Number(currentBudget.toFixed(2)),
+        contingencyRemaining: Number(contingency.toFixed(2)),
+        contingencyPercent: Number(contingencyPercent.toFixed(2)),
+        totalCommitted: Number(totalCommitted.toFixed(2)),
+        committedPercent: Number(committedPercent.toFixed(2)),
+        totalActualCost: Number(totalActualCost.toFixed(2)),
+        actualPercent: Number(actualPercent.toFixed(2)),
+        budgetVariance: Number(budgetVariance.toFixed(2)),
+        budgetVariancePercent: Number(budgetVariancePercent.toFixed(2)),
+        estimateAtCompletion: Number(estimateAtCompletion.toFixed(2)),
+        forecastVariance: Number(forecastVariance.toFixed(2)),
+        percentComplete: Number(percentComplete.toFixed(2)),
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get KPIs for project ${projectId}:`, error.stack || error.message || error);
+      throw error;
+    }
   }
 
   /**

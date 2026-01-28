@@ -164,11 +164,18 @@ export class ProjectService {
    * - Organization
    * - Status
    * - Archived status
+   * - Search query (name, number, address, city, state)
+   *
+   * Supports sorting and pagination.
    *
    * @param userId - Filter to projects user is a member of (optional)
    * @param organizationId - Filter to specific organization (optional)
    * @param status - Filter to specific status (optional)
    * @param includeArchived - Include archived projects (default: false)
+   * @param search - Search query for name, number, address, city, state (optional)
+   * @param sortBy - Sort by 'name', 'updated', or 'created' (default: 'created')
+   * @param limit - Max results (default: 50, max: 100)
+   * @param offset - Skip results for pagination (default: 0)
    * @returns Array of projects
    */
   async findAll(
@@ -176,10 +183,17 @@ export class ProjectService {
     organizationId?: string,
     status?: ProjectStatus,
     includeArchived = false,
+    search?: string,
+    sortBy = 'created',
+    limit = 50,
+    offset = 0,
   ): Promise<ProjectResponseDto[]> {
     this.logger.log(
-      `Fetching projects - userId: ${userId}, orgId: ${organizationId}, status: ${status}, includeArchived: ${includeArchived}`,
+      `Fetching projects - userId: ${userId}, orgId: ${organizationId}, status: ${status}, includeArchived: ${includeArchived}, search: ${search}, sortBy: ${sortBy}, limit: ${limit}, offset: ${offset}`,
     );
+
+    // Validate and cap limit
+    const validatedLimit = Math.min(Math.max(limit, 1), 100);
 
     const queryBuilder = this.projectRepo
       .createQueryBuilder('project')
@@ -213,8 +227,31 @@ export class ProjectService {
       queryBuilder.andWhere('project.archived_at IS NULL');
     }
 
-    // Order by most recently created
-    queryBuilder.orderBy('project.created_at', 'DESC');
+    // Search filter
+    if (search && search.trim().length > 0) {
+      const searchTerm = `%${search.trim()}%`;
+      queryBuilder.andWhere(
+        '(project.name ILIKE :search OR project.number ILIKE :search OR project.address ILIKE :search OR project.city ILIKE :search OR project.state ILIKE :search)',
+        { search: searchTerm },
+      );
+    }
+
+    // Sorting
+    switch (sortBy) {
+      case 'name':
+        queryBuilder.addOrderBy('project.name', 'ASC');
+        break;
+      case 'updated':
+        queryBuilder.addOrderBy('project.updatedAt', 'DESC');
+        break;
+      case 'created':
+      default:
+        queryBuilder.addOrderBy('project.createdAt', 'DESC');
+        break;
+    }
+
+    // Pagination
+    queryBuilder.skip(offset).take(validatedLimit);
 
     const projects = await queryBuilder.getMany();
 

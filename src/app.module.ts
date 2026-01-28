@@ -9,6 +9,8 @@ import { DatabaseModule } from './modules/database/database.module';
 import { HealthModule } from './modules/health/health.module';
 import { LoggingModule } from './common/logging/logging.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
@@ -42,6 +44,8 @@ import { FieldNotesModule } from './modules/field-notes/field-notes.module';
     DatabaseModule,
     HealthModule,
     AuthModule,
+    UsersModule,
+    DashboardModule,
     OrganizationsModule,
     ProjectsModule,
     MetricsModule,

@@ -35,7 +35,8 @@
     "migration:show": "npm run build && typeorm-ts-node-commonjs migration:show -d ./dist/ormconfig.js",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/seed-master.ts",
     "seed:master": "ts-node -r tsconfig-paths/register src/database/seeds/seed-master.ts",
-    "db:reset": "npm run seed"
+    "db:reset": "npm run seed",
+    "postinstall": "patch-package"
   },
   "keywords": [
     "construction",
@@ -151,6 +152,7 @@
     "jest-junit": "^16.0.0",
     "jest-mock-extended": "^4.0.0",
     "jest-sonar-reporter": "^2.0.0",
+    "patch-package": "^8.0.1",
     "pg-mem": "^3.0.5",
     "prettier": "^3.6.2",
     "supertest": "^7.1.4",
