@@ -65,9 +65,9 @@ export async function validateFileType(
     const actualExt = fileName.split('.').pop()?.toLowerCase();
 
     if (expectedExt !== actualExt) {
-      // Log warning but may allow for common aliases (e.g., .jpeg vs .jpg)
-      const isAcceptableAlias = (expectedExt === 'jpg' && actualExt === 'jpeg') ||
-                                (expectedExt === 'jpeg' && actualExt === 'jpg');
+      // Allow common aliases (e.g., .jpeg vs .jpg)
+      // file-type always returns 'jpg' for JPEG images
+      const isAcceptableAlias = (expectedExt === 'jpg' && actualExt === 'jpeg');
 
       if (!isAcceptableAlias) {
         return {
